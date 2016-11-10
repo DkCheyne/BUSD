@@ -1,4 +1,4 @@
-/*-----------------------------------------------------------------------------*/
+ /*-----------------------------------------------------------------------------*/
 /*                                                                             */
 /*                        Copyright (c) Derek Cheyne                           */
 /*                                   2016                                      */
@@ -41,9 +41,9 @@
 
 #include <stdlib.h>
 
-#include "ch.h"  		// needs for all ChibiOS programs
-#include "hal.h" 		// hardware abstraction layer header
-#include "vex.h"		// vex library header
+#include "ch.h"         // needs for all ChibiOS programs
+#include "hal.h"        // hardware abstraction layer header
+#include "vex.h"        // vex library header
 #include "smartmotor.h"
 
 // Digi IO configuration
@@ -68,7 +68,7 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
 /*-----------------------------------------------------------------------------*/
 /** @details
  *  This is where all of the motors are defined as in their type and sensor along
- /* direction and channel
+ s* direction and channel
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
@@ -86,7 +86,10 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 #define Motor1 kVexMotor_2
 #define Motor2 kVexMotor_3
 #define Motor3 kVexMotor_4
-const float conversionConst = 12.2812475;
+int conversionConst = 1228;
+int Motor1Pos = 0;
+int Motor2Pos = 0;
+int Motor3Pos = 0;
 
 
 /*-----------------------------------------------------------------------------*/
@@ -98,8 +101,8 @@ const float conversionConst = 12.2812475;
 void
 vexUserSetup()
 {
-	vexDigitalConfigure( dConfig, DIG_CONFIG_SIZE( dConfig ) );
-	vexMotorConfigure( mConfig, MOT_CONFIG_SIZE( mConfig ) );
+    vexDigitalConfigure( dConfig, DIG_CONFIG_SIZE( dConfig ) );
+    vexMotorConfigure( mConfig, MOT_CONFIG_SIZE( mConfig ) );
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -127,38 +130,44 @@ vexUserInit()
 void
 autonBase(int distance)
 {
-    vexMotorMotorPositionSet(Motor1, 0);
-    vexMotorMotorPositionSet(Motor2, 0);
-    vexMotorMotorPositionSet(Motor3, 0);
+    vexMotorPositionSet(Motor1, 0);
+    vexMotorPositionSet(Motor2, 0);
+    vexMotorPositionSet(Motor3, 0);
     
-    int Motor1Pos = vexMotorMotorPostionGet(Motor1);
-    int Motor2Pos = vexMotorMotorPostionGet(Motor2);
-    int Motor3Pos = vexMotorMotorPostionGet(Motor3);
+    int Motor1Pos = vexMotorPositionGet(Motor1) * 1000;
+    int Motor2Pos = vexMotorPositionGet(Motor2) * 1000;
+    int Motor3Pos = vexMotorPositionGet(Motor3 * 1000);
+                
 
-    float ticksToGo = distance * conversionConst;
+    int ticksToGo = (distance * 1000) * conversionConst;
+
 
     int motorSpeed = 0;
-    while(Motor1Pos < (ticksToGo - 40) ) 
+    while((Motor1Pos) < (ticksToGo - 400) ) 
     {
         motorSpeed = motorSpeed + 2;
+
+        Motor1Pos = vexMotorPositionGet(Motor1);
 
         vexMotorSet(Motor1, motorSpeed);
         vexMotorSet(Motor2, motorSpeed);
  
         // This should keep going from zero speed to full speed from being instant. It should now tak e
-        vexSleep ( 25 );
+        vexSleep ( 100 );
+
+
     }
 
-    if ( (Motor1Pos > (ticksToGo - 40) ) && (Motor1Pos < ticksToGo) )
+    if ( ((Motor1Pos) > (ticksToGo - 400) ) && (Motor1Pos < ticksToGo) )
     {
-        vexMotorSet(Motor1, 40);
-        vexMotorSet(Motor2, 40);
+        vexMotorSet(Motor1, 400);
+        vexMotorSet(Motor2, 400);
     }
 
-    if (Motor1Pos > ticksToGo)
+    if ((Motor1Pos) > ticksToGo)
     {
-        vexMotorSet(Motor1, 0);
-        vexmotorSet(Motor1, 0);
+        vexMotorSet(Motor1, 00);
+        vexMotorSet(Motor1, 00);
     }
 }
 
@@ -194,26 +203,25 @@ vexAutonomous( void *arg )
 msg_t
 vexOperator( void *arg )
 {
-	int16_t		blink = 0;
+    int16_t     blink = 0;
 
-	(void)arg;
+    (void)arg;
 
-	// Must call this
-	vexTaskRegister("operator");
+    // Must call this
+    vexTaskRegister("operator");
 
-	// Run until asked to terminate
-	while(!chThdShouldTerminate())
-		{
+    // Run until asked to terminate
+    while(!chThdShouldTerminate())
+        {
 
 
             if(vexControllerGet(Btn5U) == 1)
             {
                 autonBase(10);
             }
-		// Don't hog cpu
-		vexSleep( 25 );
-		}
+        // Don't hog cpu
+        vexSleep( 25 );
+        }
 
-	return (msg_t)0;
+    return (msg_t)0;
 }
-
