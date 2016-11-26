@@ -1,4 +1,4 @@
- /*-----------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------*/
 /*                                                                             */
 /*                        Copyright (c) Derek Cheyne                           */
 /*                                   2016                                      */
@@ -71,25 +71,44 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
  s* direction and channel
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
-        { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,        kImeChannel_1 },
-        { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,        kImeChannel_2 },
-        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,        kImeChannel_3 },
-        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2},
+        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3 },
+        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_4},
         { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1 },
         { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
-#define Motor1 kVexMotor_2
-#define Motor2 kVexMotor_3
-#define Motor3 kVexMotor_4
-int conversionConst = 1228;
-int Motor1Pos = 0;
-int Motor2Pos = 0;
-int Motor3Pos = 0;
+
+#define LL1    kVexMotor_2
+#define LL2    kVexMotor_3
+#define LL3    kVexMotor_6
+#define RL1    kVexMotor_7
+#define RL2    kVexMotor_9
+#define RL3    kVexMotor_10
+
+
+/* Some more trash that was added while Drickle was away */
+#define RBW    kVexMotor_1
+#define LBW    kVexMotor_8
+#define RFW    kVexMotor_4
+#define LFW    kVexMotor_5
+/*------------------------------------------------------*/
+
+
+int conversionConst = 3000;
+int RBWPos = 0;
+int LBWPos = 0;
+int RFWPos = 0;
+int LFWPos = 0;
+
+int frontMotorDifference = 0;
+bool loopAround = TRUE;
+
 
 
 /*-----------------------------------------------------------------------------*/
@@ -119,6 +138,16 @@ vexUserInit()
 
 }
 
+
+
+void UserDriveForward(void) 
+{
+     vexMotorSet(RBW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
+     vexMotorSet(RFW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
+     vexMotorSet(LFW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
+     vexMotorSet(LBW, (vexControllerGet(Ch3) - vexControllerGet(Ch1))); 
+}
+
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonBase                                                      */
 /*-----------------------------------------------------------------------------*/
@@ -127,49 +156,70 @@ vexUserInit()
 /* that far.
 /* Rev. [Future] - Include angle as part of function
 */
+
 void
 autonBase(int distance)
 {
-    vexMotorPositionSet(Motor1, 0);
-    vexMotorPositionSet(Motor2, 0);
-    vexMotorPositionSet(Motor3, 0);
+    vexMotorPositionSet(RBW, 0);
+    vexMotorPositionSet(LBW, 0);
+    vexMotorPositionSet(RFW, 0);
+    vexMotorPositionSet(LFW, 0);
     
-    int Motor1Pos = vexMotorPositionGet(Motor1) * 1000;
-    int Motor2Pos = vexMotorPositionGet(Motor2) * 1000;
-    int Motor3Pos = vexMotorPositionGet(Motor3 * 1000);
+
+    int RFWPos = (vexMotorPositionGet(RFW) * 1000);
                 
 
-    int ticksToGo = (distance * 1000) * conversionConst;
+    int ticksToGo = ((distance) * conversionConst);
 
 
     int motorSpeed = 0;
-    while((Motor1Pos) < (ticksToGo - 400) ) 
+    while(loopAround == TRUE)
     {
-        motorSpeed = motorSpeed + 2;
+        while( (abs(RFWPos)) < (ticksToGo - 4000) ) 
+        {
+            motorSpeed = motorSpeed + 2;
 
-        Motor1Pos = vexMotorPositionGet(Motor1);
+            RFWPos = (vexMotorPositionGet(RFW) * 1000);
+     
+            frontMotorDifference = ( (vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW)) * 5);
 
-        vexMotorSet(Motor1, motorSpeed);
-        vexMotorSet(Motor2, motorSpeed);
+            vexMotorSet(RFW, -(motorSpeed - frontMotorDifference) );
+            vexMotorSet(LFW, -(motorSpeed + frontMotorDifference) );
+            vexMotorSet(RBW, -(motorSpeed - frontMotorDifference) );
+            vexMotorSet(LBW, -(motorSpeed + frontMotorDifference) );
  
-        // This should keep going from zero speed to full speed from being instant. It should now tak e
-        vexSleep ( 100 );
+            // This should keep going from zero speed to full speed from being instant.
+            vexSleep ( 100 );
+        }
 
+        if ( ((abs(RFWPos)) > (ticksToGo - 4000) ) && ((abs(RFWPos)) < ticksToGo) )
+        {
+            //It is a minus because the left side encoders count backwards than the right (its weird I know)
+            frontMotorDifference = ( (vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW)));
 
+            vexMotorSet(RBW, -(40 - frontMotorDifference) );
+            vexMotorSet(LBW, -(40 + frontMotorDifference) );
+            vexMotorSet(RFW, -(40 - frontMotorDifference) );
+            vexMotorSet(LFW, -(40 + frontMotorDifference) );
+
+            RBWPos = (vexMotorPositionGet(RBW) * 1000);
+        }
+
+        if (abs(RFWPos) > ticksToGo)
+        {
+            vexMotorSet(RFW, 0);
+            vexMotorSet(LFW, 0);
+            vexMotorSet(RBW, 0);
+            vexMotorSet(LBW, 0);
+            RFWPos = (vexMotorPositionGet(RFW) * 1000);
+            loopAround = FALSE;
+        }
+
+        RFWPos = (vexMotorPositionGet(RFW) * 1000);
     }
-
-    if ( ((Motor1Pos) > (ticksToGo - 400) ) && (Motor1Pos < ticksToGo) )
-    {
-        vexMotorSet(Motor1, 400);
-        vexMotorSet(Motor2, 400);
-    }
-
-    if ((Motor1Pos) > ticksToGo)
-    {
-        vexMotorSet(Motor1, 00);
-        vexMotorSet(Motor1, 00);
-    }
+    
 }
+
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      Autonomous                                                     */
@@ -214,11 +264,53 @@ vexOperator( void *arg )
     while(!chThdShouldTerminate())
         {
 
-
+            /*
             if(vexControllerGet(Btn5U) == 1)
             {
                 autonBase(10);
             }
+            */
+
+            if(vexControllerGet(Btn5U) == 1)
+            {
+                vexMotorSet(LL1, 80);
+                vexMotorSet(LL2, 80);
+                vexMotorSet(LL3, 80);
+                vexMotorSet(RL1, 80);
+                vexMotorSet(RL2, 80);
+                vexMotorSet(RL3, 80);
+            }
+            if((vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn6D) == 0))
+            {
+                vexMotorSet(LL1, 0);
+                vexMotorSet(LL2, 0);
+                vexMotorSet(LL3, 0);
+                vexMotorSet(RL1, 0);
+                vexMotorSet(RL2, 0);
+                vexMotorSet(RL3, 0);
+            }
+
+            if(vexControllerGet(Btn6D) == 1)
+            {
+                vexMotorSet(LL1, -80);
+                vexMotorSet(LL2, -80);
+                vexMotorSet(LL3, -80);
+                vexMotorSet(RL1, -80);
+                vexMotorSet(RL2, -80);
+                vexMotorSet(RL3, -80);
+            }
+
+            if(vexControllerGet(Btn8D) == 1)
+            {
+                loopAround = TRUE;
+                autonBase(30);
+            }
+
+            UserDriveForward();
+
+           
+
+
         // Don't hog cpu
         vexSleep( 25 );
         }
