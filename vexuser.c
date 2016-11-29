@@ -108,6 +108,7 @@ int LFWPos = 0;
 
 int frontMotorDifference = 0;
 bool loopAround = TRUE;
+int loopsAround = 0;
 
 
 
@@ -142,10 +143,10 @@ vexUserInit()
 
 void UserDriveForward(void) 
 {
-     vexMotorSet(RBW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
-     vexMotorSet(RFW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
-     vexMotorSet(LFW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
-     vexMotorSet(LBW, (vexControllerGet(Ch3) - vexControllerGet(Ch1))); 
+     vexMotorSet(RBW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
+     vexMotorSet(RFW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
+     vexMotorSet(LFW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
+     vexMotorSet(LBW, (vexControllerGet(Ch3) + vexControllerGet(Ch1))); 
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -173,49 +174,48 @@ autonBase(int distance)
 
 
     int motorSpeed = 0;
+
     while(loopAround == TRUE)
     {
-        while( (abs(RFWPos)) < (ticksToGo - 4000) ) 
+        loopsAround = loopsAround + 1;
+
+        while( (abs(RFWPos)) < ticksToGo  ) 
         {
-            motorSpeed = motorSpeed + 2;
+            if (motorSpeed <= 70)
+            {
+                motorSpeed = motorSpeed + 5;
+            }
+            
 
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
      
-            frontMotorDifference = ( (vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW)) * 5);
+            frontMotorDifference = ( (vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW)) );
+            
+            
+            if (frontMotorDifference > 40)
+            {
+                frontMotorDifference = 40;
+            }
+            
 
-            vexMotorSet(RFW, -(motorSpeed - frontMotorDifference) );
-            vexMotorSet(LFW, -(motorSpeed + frontMotorDifference) );
-            vexMotorSet(RBW, -(motorSpeed - frontMotorDifference) );
-            vexMotorSet(LBW, -(motorSpeed + frontMotorDifference) );
+            vexMotorSet(RFW, (motorSpeed + frontMotorDifference)  );  
+            vexMotorSet(LFW, (motorSpeed + frontMotorDifference) );
+            vexMotorSet(RBW, (motorSpeed + frontMotorDifference)  );  
+            vexMotorSet(LBW, (motorSpeed + frontMotorDifference) );
  
             // This should keep going from zero speed to full speed from being instant.
             vexSleep ( 100 );
         }
 
-        if ( ((abs(RFWPos)) > (ticksToGo - 4000) ) && ((abs(RFWPos)) < ticksToGo) )
-        {
-            //It is a minus because the left side encoders count backwards than the right (its weird I know)
-            frontMotorDifference = ( (vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW)));
-
-            vexMotorSet(RBW, -(40 - frontMotorDifference) );
-            vexMotorSet(LBW, -(40 + frontMotorDifference) );
-            vexMotorSet(RFW, -(40 - frontMotorDifference) );
-            vexMotorSet(LFW, -(40 + frontMotorDifference) );
-
-            RBWPos = (vexMotorPositionGet(RBW) * 1000);
-        }
-
-        if (abs(RFWPos) > ticksToGo)
-        {
-            vexMotorSet(RFW, 0);
-            vexMotorSet(LFW, 0);
-            vexMotorSet(RBW, 0);
-            vexMotorSet(LBW, 0);
-            RFWPos = (vexMotorPositionGet(RFW) * 1000);
-            loopAround = FALSE;
-        }
-
+        vexMotorSet(RFW, 0);
+        vexMotorSet(LFW, 0);
+        vexMotorSet(RBW, 0);
+        vexMotorSet(LBW, 0);
         RFWPos = (vexMotorPositionGet(RFW) * 1000);
+        loopAround = FALSE;
+        
+
+        
     }
     
 }
@@ -237,6 +237,7 @@ vexAutonomous( void *arg )
 
     while(1)
         {
+            autonBase(30);
         // Don't hog cpu
         vexSleep( 25 );
         }
@@ -303,10 +304,14 @@ vexOperator( void *arg )
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
-                autonBase(30);
+                autonBase(100);
             }
 
-            UserDriveForward();
+            if (loopAround == FALSE || loopsAround == 0)
+            {
+                 UserDriveForward();
+            }
+           
 
            
 
