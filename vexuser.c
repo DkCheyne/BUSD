@@ -45,6 +45,8 @@
 #include "hal.h"        // hardware abstraction layer header
 #include "vex.h"        // vex library header
 #include "smartmotor.h"
+#include "vexgyro.h"
+
 
 // Digi IO configuration
 static  vexDigiCfg  dConfig[kVexDigital_Num] = {
@@ -100,7 +102,7 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 /*------------------------------------------------------*/
 
 
-int conversionConst = 3000;
+int conversionConst = 5800;
 int RBWPos = 0;
 int LBWPos = 0;
 int RFWPos = 0;
@@ -109,6 +111,10 @@ int LFWPos = 0;
 int frontMotorDifference = 0;
 bool loopAround = TRUE;
 int loopsAround = 0;
+
+int gyroMotorDifference = 0;
+int motorSpeedGryo = 0;
+float currentAngle = 0.0;
 
 
 
@@ -152,14 +158,13 @@ void UserDriveForward(void)
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonBase                                                      */
 /*-----------------------------------------------------------------------------*/
-/** @details
-/*  AutonBase takes a paramter of distance, in cm, and makes the robot drive 
-/* that far.
-/* Rev. [Future] - Include angle as part of function
-*/
+/** @details                                                                   */
+/*  AutonBase takes a paramter of distance, in cm, and makes the robot drive   */
+/* that far.                                                                   */
+
 
 void
-autonBase(int distance)
+autonForward(int distance)
 {
     vexMotorPositionSet(RBW, 0);
     vexMotorPositionSet(LBW, 0);
@@ -222,6 +227,104 @@ autonBase(int distance)
 
 
 /*-----------------------------------------------------------------------------*/
+/** @brief      turnTo                                                         */
+/*-----------------------------------------------------------------------------*/
+/** @details
+ *  To create a function to make the robot turn to a user defined angle. 
+ */
+
+
+void turnTo(int angle)
+{
+    /**
+    int degreeTarget;
+
+    // Because we con't reset the gyro's like the ime's we need to take an intial measurement 
+    // Of the angle so that we know where to move against
+    currentAngle = vexGyroGet();
+
+    // Angle is here so that we can use the if statements to determine what way the 
+    // Robot should be turning
+    degreeTarget = angle;
+
+    // The function vexGyroGet returns the change is degrees multiplied by ten
+    // So in order to compaire the values properly degreeTarget must be mulplied by ten
+    // So must every other thing else when dealing with the angle
+    degreeTarget = ((degreeTarget * 10) + currentAngle);
+
+
+
+    // This makes sure that the robot always turns the most effcient way
+    // (multiplied by ten see note above)
+    if (angle > 0)
+    {
+        while (vexGyroGet() < degreeTarget)
+        {
+            gyroMotorDifference = ( degreeTarget - vexGyroGet()); // While turning this way the target will have a higher value 
+                                                                 // Than the current value of vexGyroGet()
+
+            vexMotorSet(RFW, gyroMotorDifference);
+            vexMotorSet(RBW, gyroMotorDifference);
+            vexMotorSet(LFW, -gyroMotorDifference);
+            vexMotorSet(LBW, -gyroMotorDifference);   
+
+            
+
+            vexSleep ( 25 ); // Don't hog the CPU
+        }
+
+        vexMotorSet(RFW, 0);
+        vexMotorSet(RBW, 0);
+        vexMotorSet(LFW, 0);
+        vexMotorSet(LBW, 0);  
+    }
+    
+    // Multiplied by ten
+    if (angle < 0)
+    {
+        while (vexGyroGet() > degreeTarget)
+        {
+            gyroMotorDifference = (vexGyroGet() - degreeTarget);
+
+            vexMotorSet(RFW, -gyroMotorDifference);
+            vexMotorSet(RBW, -gyroMotorDifference);
+            vexMotorSet(LFW, gyroMotorDifference);
+            vexMotorSet(LBW, gyroMotorDifference);
+
+            vexSleep ( 25 );
+        }
+    }
+    */
+
+    const float conversionTime = 0.3;
+
+    int timeSleep = abs(angle) * conversionTime;
+
+    if (angle > 0)
+        {
+            vexMotorSet(RFW, -40);
+            vexMotorSet(RBW, -40);
+            vexMotorSet(LFW, 40);
+            vexMotorSet(LBW, 40);
+            vexSleep (timeSleep);
+        }
+    if (angle < 0)
+    {
+        vexMotorSet(RFW, -40);
+        vexMotorSet(RBW, -40);
+        vexMotorSet(LFW, 40);
+        vexMotorSet(LBW, 40);
+        vexSleep (timeSleep);
+    }
+        
+        
+
+
+
+
+}
+
+/*-----------------------------------------------------------------------------*/
 /** @brief      Autonomous                                                     */
 /*-----------------------------------------------------------------------------*/
 /** @details
@@ -237,7 +340,7 @@ vexAutonomous( void *arg )
 
     while(1)
         {
-            autonBase(30);
+            autonForward(30);
         // Don't hog cpu
         vexSleep( 25 );
         }
@@ -304,14 +407,20 @@ vexOperator( void *arg )
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
-                autonBase(100);
+                autonForward(100);
             }
 
             if (loopAround == FALSE || loopsAround == 0)
             {
                  UserDriveForward();
             }
+
+            if(vexControllerGet(Btn8R) == 1)
+            {
+                turnTo(40);
+            }
            
+            vexLcdPrintf(0,0, "%s%1.1d","Gyro:  ", vexGyroGet() / 10 );
 
            
 
