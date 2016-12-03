@@ -73,25 +73,26 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
  s* direction and channel
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
-        { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2},
+        { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3 },
-        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_4},
+        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1 },
+        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2 },
         { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1 },
+        { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
 
-#define LL1    kVexMotor_2
+#define LL1    kVexMotor_6
 #define LL2    kVexMotor_3
 #define LL3    kVexMotor_6
 #define RL1    kVexMotor_7
 #define RL2    kVexMotor_9
 #define RL3    kVexMotor_10
+#define LiftMotors kVexMotor_2
 
 
 /* Some more trash that was added while Drickle was away */
@@ -102,7 +103,7 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 /*------------------------------------------------------*/
 
 
-int conversionConst = 5800;
+int conversionConst = 16250;
 int RBWPos = 0;
 int LBWPos = 0;
 int RFWPos = 0;
@@ -116,6 +117,7 @@ int gyroMotorDifference = 0;
 int motorSpeedGryo = 0;
 float currentAngle = 0.0;
 
+int autonLoop = 0;
 
 
 /*-----------------------------------------------------------------------------*/
@@ -131,29 +133,95 @@ vexUserSetup()
     vexMotorConfigure( mConfig, MOT_CONFIG_SIZE( mConfig ) );
 }
 
+
 /*-----------------------------------------------------------------------------*/
-/** @brief      User initialize                                                */
+/** @brief      userDriveFoward                                                */
 /*-----------------------------------------------------------------------------*/
 /** @details
- *  This function is called after all setup is complete and communication has
- *  been established with the master processor.
- *  Start other tasks and initialize user variables here
+ *  This function controls the bass of the robot
  */
-void
-vexUserInit()
+void UserDriveForward(float forward, float sideways) 
 {
-
+     vexMotorSet(RBW, (forward - sideways));
+     vexMotorSet(RFW, (forward - sideways));
+     vexMotorSet(LFW, (forward + sideways));
+     vexMotorSet(LBW, (forward + sideways)); 
 }
 
 
 
-void UserDriveForward(void) 
+/*-----------------------------------------------------------------------------*/
+/** @brief      liftControl                                                    */
+/*-----------------------------------------------------------------------------*/
+/** @details
+ *  This function controls the lift that makes the robot move up or  
+ *  down on the pole
+ */
+void 
+liftControl(void)
 {
-     vexMotorSet(RBW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
-     vexMotorSet(RFW, (vexControllerGet(Ch3) - vexControllerGet(Ch1)));
-     vexMotorSet(LFW, (vexControllerGet(Ch3) + vexControllerGet(Ch1)));
-     vexMotorSet(LBW, (vexControllerGet(Ch3) + vexControllerGet(Ch1))); 
+    // First need to make sure whether or not the lift motors should be on
+    if((vexControllerGet(Btn6U) == 1) || (vexControllerGet(Btn5D) == 1))
+    {
+        if(vexControllerGet(Btn6U) == 1)
+        {
+            vexMotorSet(LiftMotors, 80);
+        }
+
+        if(vexControllerGet(Btn5D) == 1)
+        {
+            vexMotorSet(LiftMotors, -80);
+        }
+    }
+
+    else 
+    {
+        vexMotorSet(LiftMotors, 0);
+    }
+    
 }
+
+
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      userArmControl                                                 */
+/*-----------------------------------------------------------------------------*/
+/** @details
+ *  This function controls the arm of the robot. By looking for ch 1 for speed 
+ *  It only works when button 8d is held down.
+ */
+ void 
+ userArmControl(void)
+ {
+    if (vexControllerGet(Ch2) < 0)
+    {
+    vexMotorSet(LL1, (vexControllerGet(Ch2) * .4));
+    vexMotorSet(LL2, (vexControllerGet(Ch2) * .4));
+    vexMotorSet(LL3, (vexControllerGet(Ch2) * .4));
+    vexMotorSet(RL1, (vexControllerGet(Ch2) * .4));
+    vexMotorSet(RL2, (vexControllerGet(Ch2) * .4));
+    vexMotorSet(RL3, (vexControllerGet(Ch2) * .4));
+    }
+    else 
+    {
+        vexMotorSet(LL1, vexControllerGet(Ch2));
+        vexMotorSet(LL2, vexControllerGet(Ch2));
+        vexMotorSet(LL3, vexControllerGet(Ch2));
+        vexMotorSet(RL1, vexControllerGet(Ch2));
+        vexMotorSet(RL2, vexControllerGet(Ch2));
+        vexMotorSet(RL3, vexControllerGet(Ch2));
+    }
+    if (vexControllerGet(Btn6D) == 1)
+    {
+        vexMotorSet(LL1, (vexControllerGet(Ch2) * .4));
+        vexMotorSet(LL2, (vexControllerGet(Ch2) * .4));
+        vexMotorSet(LL3, (vexControllerGet(Ch2) * .4));
+        vexMotorSet(RL1, (vexControllerGet(Ch2) * .4));
+        vexMotorSet(RL2, (vexControllerGet(Ch2) * .4));
+        vexMotorSet(RL3, (vexControllerGet(Ch2) * .4));
+    }
+        
+ }
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonBase                                                      */
@@ -194,7 +262,7 @@ autonForward(int distance)
 
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
      
-            frontMotorDifference = ( (vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW)) );
+            frontMotorDifference = ( vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW) );
             
             
             if (frontMotorDifference > 40)
@@ -203,10 +271,10 @@ autonForward(int distance)
             }
             
 
-            vexMotorSet(RFW, (motorSpeed + frontMotorDifference)  );  
-            vexMotorSet(LFW, (motorSpeed + frontMotorDifference) );
-            vexMotorSet(RBW, (motorSpeed + frontMotorDifference)  );  
-            vexMotorSet(LBW, (motorSpeed + frontMotorDifference) );
+            vexMotorSet(RFW, motorSpeed);  
+            vexMotorSet(LFW, motorSpeed - 10);
+            vexMotorSet(RBW, motorSpeed);  
+            vexMotorSet(LBW, motorSpeed - 10);
  
             // This should keep going from zero speed to full speed from being instant.
             vexSleep ( 100 );
@@ -223,6 +291,70 @@ autonForward(int distance)
         
     }
     
+}
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      AutonArm                                                       */
+/*-----------------------------------------------------------------------------*/
+/** @details                                                                   */
+/*  First the arm has to move out to pop open the robot                        */
+/* that far.                                                                   */
+void 
+autoArm(int option)
+{
+    //Pop arm out
+    if(option == 1)
+    {
+        // Turns robot arm on so that the robot arms pops out of its crimped 
+        // Up position
+        vexMotorSet(LL1, 30);
+        vexMotorSet(LL2, 30);
+        vexMotorSet(LL3, 30);
+        vexMotorSet(RL1, 30);
+        vexMotorSet(RL2, 30);
+        vexMotorSet(RL3, 30);
+
+        // Sleep for .8 seconds 
+        vexSleep(800);
+
+        vexMotorSet(LL1, -20);
+        vexMotorSet(LL2, -20);
+        vexMotorSet(LL3, -20);
+        vexMotorSet(RL1, -20);
+        vexMotorSet(RL2, -20);
+        vexMotorSet(RL3, -20);
+        
+        // Sleep for .4 seconds
+        vexSleep(400);
+
+    }
+    // Turn off the robot arm once it waits .8 seconds
+    vexMotorSet(LL1, 0);
+    vexMotorSet(LL2, 0);
+    vexMotorSet(LL3, 0);
+    vexMotorSet(RL1, 0);
+    vexMotorSet(RL2, 0);
+    vexMotorSet(RL3, 0);
+
+    // Turns robot arm to up position to knock off the stars
+    if(option == 2)
+    {
+        vexMotorSet(LL1, 80);
+        vexMotorSet(LL2, 80);
+        vexMotorSet(LL3, 80);
+        vexMotorSet(RL1, 80);
+        vexMotorSet(RL2, 80);
+        vexMotorSet(RL3, 80);
+        
+        // Move the robot arm to 
+        vexSleep(1000);
+    }
+    vexMotorSet(LL1, 0);
+    vexMotorSet(LL2, 0);
+    vexMotorSet(LL3, 0);
+    vexMotorSet(RL1, 0);
+    vexMotorSet(RL2, 0);
+    vexMotorSet(RL3, 0);
 }
 
 
@@ -296,7 +428,7 @@ void turnTo(int angle)
     }
     */
 
-    const float conversionTime = 0.3;
+    const float conversionTime = 18;
 
     int timeSleep = abs(angle) * conversionTime;
 
@@ -340,7 +472,17 @@ vexAutonomous( void *arg )
 
     while(1)
         {
-            autonForward(30);
+           
+            autonLoop = autonLoop + 1;
+
+            if(autonLoop == 1 )
+            {
+            autoArm(1);
+            autoArm(2);
+            autonForward(75);
+            }
+            
+
         // Don't hog cpu
         vexSleep( 25 );
         }
@@ -375,52 +517,57 @@ vexOperator( void *arg )
             }
             */
 
-            if(vexControllerGet(Btn5U) == 1)
-            {
-                vexMotorSet(LL1, 80);
-                vexMotorSet(LL2, 80);
-                vexMotorSet(LL3, 80);
-                vexMotorSet(RL1, 80);
-                vexMotorSet(RL2, 80);
-                vexMotorSet(RL3, 80);
-            }
-            if((vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn6D) == 0))
-            {
-                vexMotorSet(LL1, 0);
-                vexMotorSet(LL2, 0);
-                vexMotorSet(LL3, 0);
-                vexMotorSet(RL1, 0);
-                vexMotorSet(RL2, 0);
-                vexMotorSet(RL3, 0);
-            }
-
-            if(vexControllerGet(Btn6D) == 1)
-            {
-                vexMotorSet(LL1, -80);
-                vexMotorSet(LL2, -80);
-                vexMotorSet(LL3, -80);
-                vexMotorSet(RL1, -80);
-                vexMotorSet(RL2, -80);
-                vexMotorSet(RL3, -80);
-            }
+            
 
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
                 autonForward(100);
             }
-
-            if (loopAround == FALSE || loopsAround == 0)
+            
+            // Makes 
+            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 0))
             {
-                 UserDriveForward();
+                 UserDriveForward(vexControllerGet(Ch3), vexControllerGet(Ch1));
+            }
+            
+            // This makes the base move slowly 
+            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 1))
+            {
+                UserDriveForward((.4 * vexControllerGet(Ch3)), (.4 * vexControllerGet(Ch1)));
             }
 
             if(vexControllerGet(Btn8R) == 1)
             {
-                turnTo(40);
+                turnTo(360);
             }
+
+            if(vexControllerGet(Btn6U) == 0)
+            {
+                userArmControl();
+            }
+
+            if(vexControllerGet(Btn8U) == 1)
+            {
+               
+                turnTo(5);
+                autonForward(80);
+                autoArm(1);
+                autoArm(2);
+            }
+
+
+
+            
+
+
+            
+
+            //liftControl();
+
+
            
-            vexLcdPrintf(0,0, "%s%1.1d","Gyro:  ", vexGyroGet() / 10 );
+            
 
            
 
