@@ -103,21 +103,7 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 /*------------------------------------------------------*/
 
 
-int conversionConst = 16250;
-int RBWPos = 0;
-int LBWPos = 0;
-int RFWPos = 0;
-int LFWPos = 0;
 
-int frontMotorDifference = 0;
-bool loopAround = TRUE;
-int loopsAround = 0;
-
-int gyroMotorDifference = 0;
-int motorSpeedGryo = 0;
-float currentAngle = 0.0;
-
-int autonLoop = 0;
 
 
 /*-----------------------------------------------------------------------------*/
@@ -193,35 +179,115 @@ liftControl(void)
  void 
  userArmControl(void)
  {
+
+    // This makes sure that you can't slam the arm down into the ground too fast
     if (vexControllerGet(Ch2) < 0)
     {
-    vexMotorSet(LL1, (vexControllerGet(Ch2) * .4));
-    vexMotorSet(LL2, (vexControllerGet(Ch2) * .4));
-    vexMotorSet(LL3, (vexControllerGet(Ch2) * .4));
-    vexMotorSet(RL1, (vexControllerGet(Ch2) * .4));
-    vexMotorSet(RL2, (vexControllerGet(Ch2) * .4));
-    vexMotorSet(RL3, (vexControllerGet(Ch2) * .4));
+
+        armLiftSpeed( (vexControllerGet(Ch2) * .4));
     }
+
+    // If your going up it's ok to go full speed
     else 
     {
-        vexMotorSet(LL1, vexControllerGet(Ch2));
-        vexMotorSet(LL2, vexControllerGet(Ch2));
-        vexMotorSet(LL3, vexControllerGet(Ch2));
-        vexMotorSet(RL1, vexControllerGet(Ch2));
-        vexMotorSet(RL2, vexControllerGet(Ch2));
-        vexMotorSet(RL3, vexControllerGet(Ch2));
+
+        armLiftSpeed(vexControllerGet(Ch2) );  
     }
+
+    // This allows for fine control
     if (vexControllerGet(Btn6D) == 1)
     {
-        vexMotorSet(LL1, (vexControllerGet(Ch2) * .4));
-        vexMotorSet(LL2, (vexControllerGet(Ch2) * .4));
-        vexMotorSet(LL3, (vexControllerGet(Ch2) * .4));
-        vexMotorSet(RL1, (vexControllerGet(Ch2) * .4));
-        vexMotorSet(RL2, (vexControllerGet(Ch2) * .4));
-        vexMotorSet(RL3, (vexControllerGet(Ch2) * .4));
+        armLiftSpeed( (vexControllerGet(Ch2) * .4));
     }
-        
- }
+
+    // This is for arm locking not sure if it is going to 
+    if (vexControllerGet(Btn5D) == 1)
+    {
+        armSet();
+    }
+
+}
+
+
+
+int armTarget = 0;
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      armSet                                                         */
+/*-----------------------------------------------------------------------------*/
+/** @details                                                                   */
+/*  This function keeps the arm at a set postion so that it is easier maneuver */
+void 
+armSet(void)
+{
+
+    // Calculate how far off the arm is from where it should be
+    // LL2 is just whatever motor has the encoder on it
+    int offTarget = (targetPostionArm - vexControllerGet(LL2))
+
+    // Making the arm stay on target
+    // This could be a problem because it has the ablitly to block out the other
+    // Code that is going on. If that happens and I can't find a way to fix it
+    // I'll have to create a new task for it :/
+    while(abs(offTarget) > 20)
+    {
+        // This is for when the arm falls beneith its target
+        // See the note from above
+        if(vexPostionGet(LL2) < targetPostionArm)
+        {
+            armLiftSpeed(-(offTarget) * 3);
+        }
+
+
+        // This is for when the arm moves above its target
+        // See the note from above
+        if(vexPostionGet(LL2) > targetPostionArm)
+        {
+            armLiftSpeed(-(offTarget) * 3);
+        }
+
+        // Need to let the brain think
+        vexSleep( 25 );
+
+    }
+
+    
+
+
+}
+
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      leftLift                                                       */
+/*-----------------------------------------------------------------------------*/
+/** @details                                                                   */
+/*  To keep armSet more neat and ordered because they need be set to the same  */
+void 
+armLiftSpeed(int armMotorSpeed)
+{
+    vexMotorSet(LL1, armMotorSpeed);
+    vexMotorSet(LL2, armMotorSpeed);
+    vexMotorSet(LL3, armMotorSpeed);
+    vexMotorSet(RL1, armMotorSpeed);
+    vexMotorSet(RL2, armMotorSpeed);
+    vexMotorSet(RL3, armMotorSpeed);
+}
+
+
+
+
+
+
+
+int autonLoop = 0;
+int frontMotorDifference = 0;
+bool loopAround = TRUE;
+int loopsAround = 0;
+int conversionConst = 16250;
+int RBWPos = 0;
+int LBWPos = 0;
+int RFWPos = 0;
+int LFWPos = 0;
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonBase                                                      */
@@ -293,6 +359,7 @@ autonForward(int distance)
     
 }
 
+
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonArm                                                       */
 /*-----------------------------------------------------------------------------*/
@@ -307,56 +374,38 @@ autoArm(int option)
     {
         // Turns robot arm on so that the robot arms pops out of its crimped 
         // Up position
-        vexMotorSet(LL1, 30);
-        vexMotorSet(LL2, 30);
-        vexMotorSet(LL3, 30);
-        vexMotorSet(RL1, 30);
-        vexMotorSet(RL2, 30);
-        vexMotorSet(RL3, 30);
+        armLiftSpeed(30);
 
         // Sleep for .8 seconds 
         vexSleep(800);
 
-        vexMotorSet(LL1, -20);
-        vexMotorSet(LL2, -20);
-        vexMotorSet(LL3, -20);
-        vexMotorSet(RL1, -20);
-        vexMotorSet(RL2, -20);
-        vexMotorSet(RL3, -20);
+        armLiftSpeed(-20);
         
         // Sleep for .4 seconds
         vexSleep(400);
 
     }
     // Turn off the robot arm once it waits .8 seconds
-    vexMotorSet(LL1, 0);
-    vexMotorSet(LL2, 0);
-    vexMotorSet(LL3, 0);
-    vexMotorSet(RL1, 0);
-    vexMotorSet(RL2, 0);
-    vexMotorSet(RL3, 0);
+    armLiftSpeed(0);
 
     // Turns robot arm to up position to knock off the stars
     if(option == 2)
     {
-        vexMotorSet(LL1, 80);
-        vexMotorSet(LL2, 80);
-        vexMotorSet(LL3, 80);
-        vexMotorSet(RL1, 80);
-        vexMotorSet(RL2, 80);
-        vexMotorSet(RL3, 80);
+        armLiftSpeed(80);
         
         // Move the robot arm to 
         vexSleep(1000);
     }
-    vexMotorSet(LL1, 0);
-    vexMotorSet(LL2, 0);
-    vexMotorSet(LL3, 0);
-    vexMotorSet(RL1, 0);
-    vexMotorSet(RL2, 0);
-    vexMotorSet(RL3, 0);
+    
+    armLiftSpeed(0);
 }
 
+
+
+
+int gyroMotorDifference = 0;
+int motorSpeedGryo = 0;
+float currentAngle = 0.0;
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      turnTo                                                         */
@@ -368,24 +417,18 @@ autoArm(int option)
 
 void turnTo(int angle)
 {
-    /**
+    
     int degreeTarget;
-
     // Because we con't reset the gyro's like the ime's we need to take an intial measurement 
     // Of the angle so that we know where to move against
     currentAngle = vexGyroGet();
-
     // Angle is here so that we can use the if statements to determine what way the 
     // Robot should be turning
     degreeTarget = angle;
-
     // The function vexGyroGet returns the change is degrees multiplied by ten
     // So in order to compaire the values properly degreeTarget must be mulplied by ten
     // So must every other thing else when dealing with the angle
     degreeTarget = ((degreeTarget * 10) + currentAngle);
-
-
-
     // This makes sure that the robot always turns the most effcient way
     // (multiplied by ten see note above)
     if (angle > 0)
@@ -394,17 +437,13 @@ void turnTo(int angle)
         {
             gyroMotorDifference = ( degreeTarget - vexGyroGet()); // While turning this way the target will have a higher value 
                                                                  // Than the current value of vexGyroGet()
-
             vexMotorSet(RFW, gyroMotorDifference);
             vexMotorSet(RBW, gyroMotorDifference);
             vexMotorSet(LFW, -gyroMotorDifference);
             vexMotorSet(LBW, -gyroMotorDifference);   
-
             
-
             vexSleep ( 25 ); // Don't hog the CPU
         }
-
         vexMotorSet(RFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LFW, 0);
@@ -417,16 +456,14 @@ void turnTo(int angle)
         while (vexGyroGet() > degreeTarget)
         {
             gyroMotorDifference = (vexGyroGet() - degreeTarget);
-
             vexMotorSet(RFW, -gyroMotorDifference);
             vexMotorSet(RBW, -gyroMotorDifference);
             vexMotorSet(LFW, gyroMotorDifference);
             vexMotorSet(LBW, gyroMotorDifference);
-
             vexSleep ( 25 );
         }
     }
-    */
+    
 
     const float conversionTime = 18;
 
@@ -449,12 +486,11 @@ void turnTo(int angle)
         vexSleep (timeSleep);
     }
         
-        
-
-
-
 
 }
+
+
+
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      Autonomous                                                     */
@@ -469,6 +505,8 @@ vexAutonomous( void *arg )
 
     // Must call this
     vexTaskRegister("auton");
+
+
 
     while(1)
         {
@@ -489,6 +527,10 @@ vexAutonomous( void *arg )
 
     return (msg_t)0;
 }
+
+
+
+
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      Driver control                                                 */
@@ -518,14 +560,14 @@ vexOperator( void *arg )
             */
 
             
-
+            // There needs to be some intialization in autonForward so that I can call it more than once 
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
                 autonForward(100);
             }
             
-            // Makes 
+            // This is jus the normal base code
             if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 0))
             {
                  UserDriveForward(vexControllerGet(Ch3), vexControllerGet(Ch1));
@@ -537,16 +579,19 @@ vexOperator( void *arg )
                 UserDriveForward((.4 * vexControllerGet(Ch3)), (.4 * vexControllerGet(Ch1)));
             }
 
+
+            // Debug gryo code function
+            // Need to get rid of this before competition
             if(vexControllerGet(Btn8R) == 1)
             {
                 turnTo(360);
             }
 
-            if(vexControllerGet(Btn6U) == 0)
-            {
-                userArmControl();
-            }
-
+            
+            
+               
+            
+            // My auton debug button
             if(vexControllerGet(Btn8U) == 1)
             {
                
@@ -554,23 +599,13 @@ vexOperator( void *arg )
                 autonForward(80);
                 autoArm(1);
                 autoArm(2);
+
             }
 
 
-
-            
-
-
-            
-
-            //liftControl();
-
-
-           
-            
-
-           
-
+            // User Arm Control will always work unless you press Btn6U
+            // Then it will lock the arm into the last spot it was in "hopefully"
+             userArmControl();
 
         // Don't hog cpu
         vexSleep( 25 );
