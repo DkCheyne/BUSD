@@ -74,36 +74,101 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_4 },
         { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1 },
-        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2 },
-        { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3},
+        { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1},
+        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2 },
         { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
 
-#define LL1    kVexMotor_6
-#define LL2    kVexMotor_3
-#define LL3    kVexMotor_6
-#define RL1    kVexMotor_7
-#define RL2    kVexMotor_9
-#define RL3    kVexMotor_10
-#define LiftMotors kVexMotor_2
+#define LL1    kVexMotor_9
+#define LL3    kVexMotor_4
+#define RL1    kVexMotor_5
+
+
+#define LiftMotor1 kVexMotor_1
+#define LiftMotor2 kVexMotor_10
+
+#define claw kVexMotor_2
 
 
 /* Some more trash that was added while Drickle was away */
-#define RBW    kVexMotor_1
-#define LBW    kVexMotor_8
-#define RFW    kVexMotor_4
-#define LFW    kVexMotor_5
+#define RBW    kVexMotor_8
+#define LBW    kVexMotor_3
+#define RFW    kVexMotor_7
+#define LFW    kVexMotor_6
 /*------------------------------------------------------*/
 
 
 
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      leftLift                                                       */
+/*-----------------------------------------------------------------------------*/
+/** @details                                                                   */
+/*  To keep armSet more neat and ordered because they need be set to the same  */
+void 
+armLiftSpeed(int armMotorSpeed)
+{
+    vexMotorSet(LL1, armMotorSpeed);
+    vexMotorSet(LL3, armMotorSpeed);
+    vexMotorSet(RL1, armMotorSpeed);
+}
+
+
+int armTarget = 0;
+int offSetCurrent = 0;
+int offSetPrev = 0;
+int offSetDerivative = 0;
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      armSet                                                         */
+/*-----------------------------------------------------------------------------*/
+/** @details                                                                   */
+/*  This function keeps the arm at a set postion so that it is easier maneuver */
+void armSet(int targetPositionArm) 
+{
+
+    int offSetPrev = offSetCurrent;
+
+    // Calculate how far off the arm is from where it should be
+    // RL1 is just whatever motor has the encoder on it
+    int offTargetcurrent = (targetPositionArm - vexMotorPositionGet(RL1));
+
+    int offSetDerivative = (offSetCurrent - offSetPrev);
+
+    // Making the arm stay on target
+    // This could be a problem because it has the ablitly to block out the other
+    // Code that is going on. If that happens and I can't find a way to fix it
+    // I'll have to create a new task for it :/
+    if(abs(offTargetcurrent) > 10)
+    {
+        // This is for when the arm falls beneith its target
+        // See the note from above
+        if(vexMotorPositionGet(RL1) < targetPositionArm)
+        {
+            armLiftSpeed((-(offTargetcurrent) * 3) - (offSetDerivative * 3));
+        }
+
+
+        // This is for when the arm moves above its target
+        // See the note from above
+        if(vexMotorPositionGet(RL1) > targetPositionArm)
+        {
+            armLiftSpeed((offTargetcurrent) * 3 - (offSetDerivative * 3));
+        }
+
+        // Need to let the brain think
+        vexSleep( 25 );
+
+    }
+    
+}
 
 
 /*-----------------------------------------------------------------------------*/
@@ -126,7 +191,7 @@ vexUserSetup()
 /** @details
  *  This function controls the bass of the robot
  */
-void UserDriveForward(float forward, float sideways) 
+void UserDriveForward(float sideways, float forward) 
 {
      vexMotorSet(RBW, (forward - sideways));
      vexMotorSet(RFW, (forward - sideways));
@@ -151,23 +216,59 @@ liftControl(void)
     {
         if(vexControllerGet(Btn6U) == 1)
         {
-            vexMotorSet(LiftMotors, 80);
+            vexMotorSet(LiftMotor1, 80);
+            vexMotorSet(LiftMotor2, 80);
         }
 
         if(vexControllerGet(Btn5D) == 1)
         {
-            vexMotorSet(LiftMotors, -80);
+            vexMotorSet(LiftMotor1, -80);
+            vexMotorSet(LiftMotor2, -80);
         }
     }
 
     else 
     {
-        vexMotorSet(LiftMotors, 0);
+        vexMotorSet(LiftMotor1, 0);
+        vexMotorSet(LiftMotor2, 0);
     }
     
 }
 
 
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      clawControl                                                    */
+/*-----------------------------------------------------------------------------*/
+/** @details
+ *  To create a function to run the claw on the robot
+ */
+ void clawControl(void)
+ {
+    if(vexControllerGet(Btn7L) == 1)
+    {
+        vexMotorSet(claw, 40);
+    }
+
+    if(vexControllerGet(Btn7R) == 1)
+    {
+        vexMotorSet(claw, -40);
+    }
+
+    if( (vexControllerGet(Btn7L) == 0) && (vexControllerGet(Btn7R) == 0))
+    {
+        vexMotorSet(claw, 0);
+    }
+
+ }
+
+
+
+
+
+// This is an incriment counter to be able to determine what target armSet() should get
+// Right now all this needs to do is intialize it once. 
+int armLoops = 0;
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      userArmControl                                                 */
@@ -180,98 +281,53 @@ liftControl(void)
  userArmControl(void)
  {
 
-    // This makes sure that you can't slam the arm down into the ground too fast
-    if (vexControllerGet(Ch2) < 0)
-    {
 
-        armLiftSpeed( (vexControllerGet(Ch2) * .4));
-    }
-
-    // If your going up it's ok to go full speed
-    else 
-    {
-
-        armLiftSpeed(vexControllerGet(Ch2) );  
-    }
-
-    // This allows for fine control
-    if (vexControllerGet(Btn6D) == 1)
-    {
-        armLiftSpeed( (vexControllerGet(Ch2) * .4));
-    }
+    
+   
 
     // This is for arm locking not sure if it is going to 
     if (vexControllerGet(Btn5D) == 1)
     {
-        armSet();
+        armLoops = armLoops + 1;
+        if(armLoops == 1)
+        {
+            // Need to Figure out how to pass this the initial position at which the button was pressed
+             armSet(vexMotorPositionGet(RL1));
+        }
+        
     }
 
-}
-
-
-
-int armTarget = 0;
-
-/*-----------------------------------------------------------------------------*/
-/** @brief      armSet                                                         */
-/*-----------------------------------------------------------------------------*/
-/** @details                                                                   */
-/*  This function keeps the arm at a set postion so that it is easier maneuver */
-void 
-armSet(void)
-{
-
-    // Calculate how far off the arm is from where it should be
-    // LL2 is just whatever motor has the encoder on it
-    int offTarget = (targetPostionArm - vexControllerGet(LL2))
-
-    // Making the arm stay on target
-    // This could be a problem because it has the ablitly to block out the other
-    // Code that is going on. If that happens and I can't find a way to fix it
-    // I'll have to create a new task for it :/
-    while(abs(offTarget) > 20)
+    // Resets armLoops around so that it is possible to know when to pass the correct intial position
+    // To armSet()
+    if (vexControllerGet(Btn5D) == 0)
     {
-        // This is for when the arm falls beneith its target
-        // See the note from above
-        if(vexPostionGet(LL2) < targetPostionArm)
+        armLoops = 0;
+         // This makes sure that you can't slam the arm down into the ground too fast
+        if (vexControllerGet(Ch2) < 0)
         {
-            armLiftSpeed(-(offTarget) * 3);
+
+            armLiftSpeed( (vexControllerGet(Ch2) * .4));
         }
 
-
-        // This is for when the arm moves above its target
-        // See the note from above
-        if(vexPostionGet(LL2) > targetPostionArm)
+        // If your going up it's ok to go full speed
+        else 
         {
-            armLiftSpeed(-(offTarget) * 3);
+
+            armLiftSpeed(vexControllerGet(Ch2) );  
         }
 
-        // Need to let the brain think
-        vexSleep( 25 );
-
+        // This allows for fine control
+        if (vexControllerGet(Btn6D) == 1)
+        {
+            armLiftSpeed( (vexControllerGet(Ch2) * .4));
+        }
     }
 
-    
-
-
 }
 
 
-/*-----------------------------------------------------------------------------*/
-/** @brief      leftLift                                                       */
-/*-----------------------------------------------------------------------------*/
-/** @details                                                                   */
-/*  To keep armSet more neat and ordered because they need be set to the same  */
-void 
-armLiftSpeed(int armMotorSpeed)
-{
-    vexMotorSet(LL1, armMotorSpeed);
-    vexMotorSet(LL2, armMotorSpeed);
-    vexMotorSet(LL3, armMotorSpeed);
-    vexMotorSet(RL1, armMotorSpeed);
-    vexMotorSet(RL2, armMotorSpeed);
-    vexMotorSet(RL3, armMotorSpeed);
-}
+
+
 
 
 
@@ -462,30 +518,7 @@ void turnTo(int angle)
             vexMotorSet(LBW, gyroMotorDifference);
             vexSleep ( 25 );
         }
-    }
-    
-
-    const float conversionTime = 18;
-
-    int timeSleep = abs(angle) * conversionTime;
-
-    if (angle > 0)
-        {
-            vexMotorSet(RFW, -40);
-            vexMotorSet(RBW, -40);
-            vexMotorSet(LFW, 40);
-            vexMotorSet(LBW, 40);
-            vexSleep (timeSleep);
-        }
-    if (angle < 0)
-    {
-        vexMotorSet(RFW, -40);
-        vexMotorSet(RBW, -40);
-        vexMotorSet(LFW, 40);
-        vexMotorSet(LBW, 40);
-        vexSleep (timeSleep);
-    }
-        
+    }  
 
 }
 
@@ -586,6 +619,9 @@ vexOperator( void *arg )
             {
                 turnTo(360);
             }
+
+            liftControl();
+            clawControl();
 
             
             
