@@ -115,9 +115,9 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 void 
 armLiftSpeed(int armMotorSpeed)
 {
-    vexMotorSet(LL1, armMotorSpeed);
-    vexMotorSet(LL3, armMotorSpeed);
-    vexMotorSet(RL1, armMotorSpeed);
+    vexMotorSet(LL1, -armMotorSpeed);
+    vexMotorSet(LL3, -armMotorSpeed);
+    vexMotorSet(RL1, -armMotorSpeed);
 }
 
 
@@ -166,6 +166,10 @@ void armSet(int targetPositionArm)
         // Need to let the brain think
         vexSleep( 25 );
 
+        // Intergrate the error over time 
+        // This should update roughly 40 times a second(ish)
+
+
     }
     
 }
@@ -212,15 +216,15 @@ void
 liftControl(void)
 {
     // First need to make sure whether or not the lift motors should be on
-    if((vexControllerGet(Btn6U) == 1) || (vexControllerGet(Btn5D) == 1))
+    if((vexControllerGet(Btn8L) == 1) || (vexControllerGet(Btn8U) == 1))
     {
-        if(vexControllerGet(Btn6U) == 1)
+        if(vexControllerGet(Btn8L) == 1)
         {
             vexMotorSet(LiftMotor1, 80);
             vexMotorSet(LiftMotor2, 80);
         }
 
-        if(vexControllerGet(Btn5D) == 1)
+        if(vexControllerGet(Btn8U) == 1)
         {
             vexMotorSet(LiftMotor1, -80);
             vexMotorSet(LiftMotor2, -80);
@@ -245,17 +249,17 @@ liftControl(void)
  */
  void clawControl(void)
  {
-    if(vexControllerGet(Btn7L) == 1)
+    if(vexControllerGet(Btn5D) == 1)
     {
-        vexMotorSet(claw, 40);
+        vexMotorSet(claw, 100);
     }
 
-    if(vexControllerGet(Btn7R) == 1)
+    if(vexControllerGet(Btn5U) == 1)
     {
-        vexMotorSet(claw, -40);
+        vexMotorSet(claw, -100);
     }
 
-    if( (vexControllerGet(Btn7L) == 0) && (vexControllerGet(Btn7R) == 0))
+    if( (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 0))
     {
         vexMotorSet(claw, 0);
     }
@@ -269,7 +273,7 @@ liftControl(void)
 // This is an incriment counter to be able to determine what target armSet() should get
 // Right now all this needs to do is intialize it once. 
 int armLoops = 0;
-
+int lastState = 0;
 /*-----------------------------------------------------------------------------*/
 /** @brief      userArmControl                                                 */
 /*-----------------------------------------------------------------------------*/
@@ -281,12 +285,8 @@ int armLoops = 0;
  userArmControl(void)
  {
 
-
-    
-   
-
-    // This is for arm locking not sure if it is going to 
-    if (vexControllerGet(Btn5D) == 1)
+    // This is for arm locking I only want it to pass a value to the loop once
+    if ((vexControllerGet(Btn7L) != lastState) && (vexControllerGet(Btn7L) == 1))
     {
         armLoops = armLoops + 1;
         if(armLoops == 1)
@@ -294,16 +294,16 @@ int armLoops = 0;
             // Need to Figure out how to pass this the initial position at which the button was pressed
              armSet(vexMotorPositionGet(RL1));
         }
-        
+        int lastState = (vexControllerGet(Btn7L));
     }
 
-    // Resets armLoops around so that it is possible to know when to pass the correct intial position
-    // To armSet()
-    if (vexControllerGet(Btn5D) == 0)
+    // This is where the rest of the options are for armControl
+    // The if line below is to make sure that these options don't overide armSet()
+    if (vexControllerGet(Btn7L) == 0)
     {
         armLoops = 0;
          // This makes sure that you can't slam the arm down into the ground too fast
-        if (vexControllerGet(Ch2) < 0)
+        if (vexControllerGet(Ch2) > 0)
         {
 
             armLiftSpeed( (vexControllerGet(Ch2) * .4));
@@ -312,7 +312,6 @@ int armLoops = 0;
         // If your going up it's ok to go full speed
         else 
         {
-
             armLiftSpeed(vexControllerGet(Ch2) );  
         }
 
@@ -423,7 +422,7 @@ autonForward(int distance)
 /*  First the arm has to move out to pop open the robot                        */
 /* that far.                                                                   */
 void 
-autoArm(int option)
+autoArm(int option, int target)
 {
     //Pop arm out
     if(option == 1)
@@ -447,10 +446,13 @@ autoArm(int option)
     // Turns robot arm to up position to knock off the stars
     if(option == 2)
     {
-        armLiftSpeed(80);
-        
-        // Move the robot arm to 
-        vexSleep(1000);
+        while(vexMotorPositionGet(RL1) < target)
+        {
+            armLiftSpeed(target - RL1);
+
+            //Sleep for a teenie tiny bit
+            vexSleep(25);
+        }
     }
     
     armLiftSpeed(0);
@@ -491,24 +493,31 @@ void turnTo(int angle)
     {
         while (vexGyroGet() < degreeTarget)
         {
-            gyroMotorDifference = ( degreeTarget - vexGyroGet()); // While turning this way the target will have a higher value 
-                                                                 // Than the current value of vexGyroGet()
+            // While turning this way the target will have a higher value 
+            gyroMotorDifference = ( degreeTarget - vexGyroGet()); 
+                                                                 
+            // Than the current value of vexGyroGet()
             vexMotorSet(RFW, gyroMotorDifference);
             vexMotorSet(RBW, gyroMotorDifference);
             vexMotorSet(LFW, -gyroMotorDifference);
             vexMotorSet(LBW, -gyroMotorDifference);   
             
-            vexSleep ( 25 ); // Don't hog the CPU
+            // Don't hog the CPU
+            vexSleep ( 25 ); 
         }
+
+        // Make sure that motors turn off when it hits it's target
         vexMotorSet(RFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LFW, 0);
         vexMotorSet(LBW, 0);  
     }
     
-    // Multiplied by ten
+    // Multiplied by ten because the adc multiplies it by ten
     if (angle < 0)
     {
+
+        // 
         while (vexGyroGet() > degreeTarget)
         {
             gyroMotorDifference = (vexGyroGet() - degreeTarget);
@@ -548,8 +557,8 @@ vexAutonomous( void *arg )
 
             if(autonLoop == 1 )
             {
-            autoArm(1);
-            autoArm(2);
+            autoArm(1, 100);
+            autoArm(2, 100);
             autonForward(75);
             }
             
@@ -601,13 +610,13 @@ vexOperator( void *arg )
             }
             
             // This is jus the normal base code
-            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 0))
+            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn7U) == 0))
             {
                  UserDriveForward(vexControllerGet(Ch3), vexControllerGet(Ch1));
             }
             
             // This makes the base move slowly 
-            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 1))
+            if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn7U) == 1))
             {
                 UserDriveForward((.4 * vexControllerGet(Ch3)), (.4 * vexControllerGet(Ch1)));
             }
@@ -633,8 +642,8 @@ vexOperator( void *arg )
                
                 turnTo(5);
                 autonForward(80);
-                autoArm(1);
-                autoArm(2);
+                autoArm(1, 100);
+                autoArm(2, 100);
 
             }
 
