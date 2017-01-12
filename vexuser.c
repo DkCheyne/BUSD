@@ -108,10 +108,14 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 
 
 /*-----------------------------------------------------------------------------*/
-/** @brief      leftLift                                                       */
+/** @brief      armLiftSpeed                                                   */
 /*-----------------------------------------------------------------------------*/
-/** @details                                                                   */
-/*  To keep armSet more neat and ordered because they need be set to the same  */
+/** @details
+ *  This function was formed to reduce the clutter in the functions that are
+ *  moving the arm. Whenever you move the arm all of the motors have to move
+ *  in the same direction at the same time. So it was simple to basically 
+ *  re-define them as one motor using this function. 
+ */
 void 
 armLiftSpeed(int armMotorSpeed)
 {
@@ -120,7 +124,7 @@ armLiftSpeed(int armMotorSpeed)
     vexMotorSet(RL1, -armMotorSpeed);
 }
 
-
+/**
 int armTarget = 0;
 int offSetCurrent = 0;
 int offSetPrev = 0;
@@ -129,8 +133,12 @@ int offSetDerivative = 0;
 /*-----------------------------------------------------------------------------*/
 /** @brief      armSet                                                         */
 /*-----------------------------------------------------------------------------*/
-/** @details                                                                   */
-/*  This function keeps the arm at a set postion so that it is easier maneuver */
+/** @details
+ *  Even with the addition of the rubber bands to the robot arm it sometimes 
+ *  gets jostled around. So the driver then has to fix this problem. This 
+ *  tries to keep the arm in the same postion using a somewhat hacked together
+ *  PID control system.  
+ */
 void armSet(int targetPositionArm) 
 {
 
@@ -550,6 +558,9 @@ vexAutonomous( void *arg )
 
 
 
+
+
+
     while(1)
         {
            
@@ -569,8 +580,6 @@ vexAutonomous( void *arg )
 
     return (msg_t)0;
 }
-
-
 
 
 
@@ -632,10 +641,7 @@ vexOperator( void *arg )
             liftControl();
             clawControl();
 
-            
-            
-               
-            
+        
             // My auton debug button
             if(vexControllerGet(Btn8U) == 1)
             {
