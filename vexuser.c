@@ -77,11 +77,11 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_4 },
         { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3},
+        { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1},
-        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2 },
+        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2},
         { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
+        { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3},
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
@@ -124,11 +124,12 @@ armLiftSpeed(int armMotorSpeed)
     vexMotorSet(RL1, -armMotorSpeed);
 }
 
-/**
+
 int armTarget = 0;
 int offSetCurrent = 0;
 int offSetPrev = 0;
 int offSetDerivative = 0;
+
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      armSet                                                         */
@@ -391,7 +392,7 @@ autonForward(int distance)
 
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
      
-            frontMotorDifference = ( vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW) );
+            frontMotorDifference = ( vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW) );
             
             
             if (frontMotorDifference > 40)
@@ -401,9 +402,9 @@ autonForward(int distance)
             
 
             vexMotorSet(RFW, motorSpeed);  
-            vexMotorSet(LFW, motorSpeed - 10);
+            vexMotorSet(LFW, - motorSpeed - 10);
             vexMotorSet(RBW, motorSpeed);  
-            vexMotorSet(LBW, motorSpeed - 10);
+            vexMotorSet(LBW, - motorSpeed - 10);
  
             // This should keep going from zero speed to full speed from being instant.
             vexSleep ( 100 );
@@ -472,6 +473,7 @@ autoArm(int option, int target)
 int gyroMotorDifference = 0;
 int motorSpeedGryo = 0;
 float currentAngle = 0.0;
+
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      turnTo                                                         */
@@ -553,8 +555,12 @@ vexAutonomous( void *arg )
 {
     (void)arg;
 
-    // Must call this
+    // Must call this so that it is able to be killed by the game manager
     vexTaskRegister("auton");
+
+
+
+
 
 
 
@@ -598,6 +604,9 @@ vexOperator( void *arg )
 
     // Must call this
     vexTaskRegister("operator");
+
+    vexGyroInit(kVexAnalog_1);
+
 
     // Run until asked to terminate
     while(!chThdShouldTerminate())
@@ -661,6 +670,7 @@ vexOperator( void *arg )
         // Don't hog cpu
         vexSleep( 25 );
         }
+
 
     return (msg_t)0;
 }
