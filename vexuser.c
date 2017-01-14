@@ -559,21 +559,6 @@ vexAutonomous( void *arg )
     vexTaskRegister("auton");
 
 
-
-
-
-
-
-
-
-
-    while(1)
-        {
-           
-            autonLoop = autonLoop + 1;
-
-            if(autonLoop == 1 )
-            {
                 vexMotorSet(claw, 100);
                 vexSleep(500);
                 vexMotorSet(claw, 0);
@@ -584,14 +569,7 @@ vexAutonomous( void *arg )
                 vexMotorSet(claw, 100);
                 vexSleep(100);
                 vexMotorSet(claw, 0);
-                autonForward(155);
-            }
-            
-
-        // Don't hog cpu
-        vexSleep( 25 );
-        }
-
+        
     return (msg_t)0;
 }
 
