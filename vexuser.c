@@ -229,14 +229,14 @@ liftControl(void)
     {
         if(vexControllerGet(Btn8L) == 1)
         {
-            vexMotorSet(LiftMotor1, 80);
-            vexMotorSet(LiftMotor2, 80);
+            vexMotorSet(LiftMotor1, 120);
+            vexMotorSet(LiftMotor2, 120);
         }
 
         if(vexControllerGet(Btn8U) == 1)
         {
-            vexMotorSet(LiftMotor1, -80);
-            vexMotorSet(LiftMotor2, -80);
+            vexMotorSet(LiftMotor1, -120);
+            vexMotorSet(LiftMotor2, -120);
         }
     }
 
@@ -347,7 +347,7 @@ int autonLoop = 0;
 int frontMotorDifference = 0;
 bool loopAround = TRUE;
 int loopsAround = 0;
-int conversionConst = 16250;
+int conversionConst = 14250;
 int RBWPos = 0;
 int LBWPos = 0;
 int RFWPos = 0;
@@ -401,10 +401,10 @@ autonForward(int distance)
             }
             
 
-            vexMotorSet(RFW, motorSpeed);  
-            vexMotorSet(LFW, - motorSpeed - 10);
-            vexMotorSet(RBW, motorSpeed);  
-            vexMotorSet(LBW, - motorSpeed - 10);
+            vexMotorSet(RFW, -motorSpeed - frontMotorDifference);  
+            vexMotorSet(LFW,  motorSpeed - 10 + frontMotorDifference);
+            vexMotorSet(RBW, -motorSpeed - frontMotorDifference);  
+            vexMotorSet(LBW,  motorSpeed - 10 + frontMotorDifference);
  
             // This should keep going from zero speed to full speed from being instant.
             vexSleep ( 100 );
@@ -574,9 +574,17 @@ vexAutonomous( void *arg )
 
             if(autonLoop == 1 )
             {
-            autoArm(1, 100);
-            autoArm(2, 100);
-            autonForward(75);
+                vexMotorSet(claw, 100);
+                vexSleep(500);
+                vexMotorSet(claw, 0);
+                armLiftSpeed(100);
+                vexSleep(1300);
+                armLiftSpeed(0);
+                vexSleep(1000);
+                vexMotorSet(claw, 100);
+                vexSleep(100);
+                vexMotorSet(claw, 0);
+                autonForward(155);
             }
             
 
@@ -642,25 +650,38 @@ vexOperator( void *arg )
 
             // Debug gryo code function
             // Need to get rid of this before competition
+            /*
             if(vexControllerGet(Btn8R) == 1)
             {
                 turnTo(360);
             }
-
-            liftControl();
+            */
+            //liftControl();
             clawControl();
 
         
             // My auton debug button
+            
             if(vexControllerGet(Btn8U) == 1)
             {
                
-                turnTo(5);
-                autonForward(80);
-                autoArm(1, 100);
-                autoArm(2, 100);
+                vexMotorSet(claw, 100);
+                vexSleep(500);
+                vexMotorSet(claw, 0);
+                armLiftSpeed(100);
+                vexSleep(1300);
+                armLiftSpeed(0);
+                vexSleep(1000);
+                vexMotorSet(claw, 100);
+                vexSleep(100);
+                vexMotorSet(claw, 0);
+                autonForward(155);
+                vexMotorSet(claw, -100);
+                vexSleep(500);
+
 
             }
+            
 
 
             // User Arm Control will always work unless you press Btn6U
