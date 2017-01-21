@@ -1,42 +1,10 @@
 /*-----------------------------------------------------------------------------*/
 /*                                                                             */
-/*                        Copyright (c) Derek Cheyne                           */
-/*                                   2016                                      */
-/*                            All Rights Reserved                              */
-/*                                                                             */
-/*-----------------------------------------------------------------------------*/
-/*                                                                             */
 /*    Module:     vexuser.c                                                    */
 /*    Author:     Derek Cheyne                                                 */
 /*    Created:    11 November 2016                                             */
-/*                                                                             */
-/*    Revisions:                                                               */
-/*                                                                             */
-/*-----------------------------------------------------------------------------*/
-/*                                                                             */
-/*    The author is supplying this software for use with the VEX cortex        */
-/*    control system. This file can be freely distributed and teams are        */
-/*    authorized to freely use this program , however, it is requested that    */
-/*    improvements or additions be shared with the Vex community via the vex   */
-/*    forum.  Please acknowledge the work of the authors when appropriate.     */
-/*    Thanks.                                                                  */
-/*                                                                             */
-/*    Licensed under the Apache License, Version 2.0 (the "License");          */
-/*    you may not use this file except in compliance with the License.         */
-/*    You may obtain a copy of the License at                                  */
-/*                                                                             */
-/*      http://www.apache.org/licenses/LICENSE-2.0                             */
-/*                                                                             */
-/*    Unless required by applicable law or agreed to in writing, software      */
-/*    distributed under the License is distributed on an "AS IS" BASIS,        */
-/*    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
-/*    See the License for the specific language governing permissions and      */
-/*    limitations under the License.                                           */
-/*                                                                             */
-/*    The author can be contacted on the vex forums as PiCo                    */
-/*    or electronic mail using dkcheyne399_at_gmail_com                        */
-/*    Mentor for team 2581P Phoenix Robotics, Battle Creek, Mi.                */
-/*                                                                             */
+/*    Vex Forum:  PiCo                                                         */
+/*    Email:      dkcheyne399@gmail.com                                        */
 /*-----------------------------------------------------------------------------*/
 
 #include <stdlib.h>
@@ -343,7 +311,7 @@ int lastState = 0;
 
 
 
-int autonLoop = 0;
+
 int frontMotorDifference = 0;
 bool loopAround = TRUE;
 int loopsAround = 0;
@@ -378,9 +346,9 @@ autonForward(int distance)
 
     int motorSpeed = 0;
 
-    while(loopAround == TRUE)
-    {
-        loopsAround = loopsAround + 1;
+    //while(loopAround == TRUE)
+    //{
+      //  loopsAround = loopsAround + 1;
 
         while( (abs(RFWPos)) < ticksToGo  ) 
         {
@@ -407,7 +375,13 @@ autonForward(int distance)
             vexMotorSet(LBW,  motorSpeed - 10 + frontMotorDifference);
  
             // This should keep going from zero speed to full speed from being instant.
-            vexSleep ( 100 );
+            vexSleep ( 25 );
+            
+            //if((vexControllerGet(Btn5U) == 1) && (vexControllerGet(Btn6U) == 1))
+            //{
+            //    break;
+            //}
+
         }
 
         vexMotorSet(RFW, 0);
@@ -416,10 +390,12 @@ autonForward(int distance)
         vexMotorSet(LBW, 0);
         RFWPos = (vexMotorPositionGet(RFW) * 1000);
         loopAround = FALSE;
+
+        vexSleep(25);
         
 
         
-    }
+    //}
     
 }
 
@@ -523,7 +499,7 @@ void turnTo(int angle)
         vexMotorSet(LBW, 0);  
     }
     
-    // Multiplied by ten because the adc multiplies it by ten
+    // Multiplied by ten because vexGryoGet() multplies teh angle by ten
     if (angle < 0)
     {
 
@@ -544,34 +520,61 @@ void turnTo(int angle)
 
 
 
+
+
+int autonLoop = 0;
 /*-----------------------------------------------------------------------------*/
 /** @brief      Autonomous                                                     */
 /*-----------------------------------------------------------------------------*/
 /** @details
- *  This thread is started when the autonomous period is started
- */
-msg_t
-vexAutonomous( void *arg )
-{
-    (void)arg;
+*  This thread is started when the autonomous period is started
+*/
+ msg_t vexAutonomous( void *arg )
+ {
+     // (void)arg;
+ 
+     // Must call this
+     vexTaskRegister("auton");
+            
+    vexMotorSet(claw, 100);
+    vexSleep(400);
+    vexMotorSet(claw, 0);
+    armLiftSpeed(100);
+    vexSleep(1300);
+    armLiftSpeed(0);
+    vexSleep(600);
+    //vexMotorSet(claw, 100);
+    //vexSleep(100);
+    vexMotorSet(claw, 0);
+    autonForward(155);
+    // THis is for programming skils
+    /*
+    autonForward(-155);
+    vexMotorSet(claw, -100);
+    vexSleep(250);
+    autonForward(155);
+    vexMotorSet(claw, 100);
+    autonForward(-155);
+    vexMotorSet(claw, -100);
+    vexSleep(250);
+    autonForward(155);
+    vexMotorSet(claw, 100);
+    autonForward(-155);
+    vexMotorSet(claw, -100);
+    vexSleep(250);
+    autonForward(155);
+    vexMotorSet(claw, 100);
+    autonForward(-155);
+    vexMotorSet(claw, -100);
+    vexSleep(250);
+    autonForward(155);
+    vexMotorSet(claw, 100);
+    */
+    
+ 
+     return (msg_t)0;
+ }
 
-    // Must call this so that it is able to be killed by the game manager
-    vexTaskRegister("auton");
-
-
-                vexMotorSet(claw, 100);
-                vexSleep(500);
-                vexMotorSet(claw, 0);
-                armLiftSpeed(100);
-                vexSleep(1300);
-                armLiftSpeed(0);
-                vexSleep(1000);
-                vexMotorSet(claw, 100);
-                vexSleep(100);
-                vexMotorSet(claw, 0);
-        
-    return (msg_t)0;
-}
 
 
 
@@ -607,6 +610,7 @@ vexOperator( void *arg )
 
             
             // There needs to be some intialization in autonForward so that I can call it more than once 
+            
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
@@ -639,7 +643,7 @@ vexOperator( void *arg )
 
         
             // My auton debug button
-            
+            /*
             if(vexControllerGet(Btn8U) == 1)
             {
                
@@ -659,6 +663,8 @@ vexOperator( void *arg )
 
 
             }
+            */
+            
             
 
 
