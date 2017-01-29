@@ -8,12 +8,15 @@
 /*-----------------------------------------------------------------------------*/
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "ch.h"         // needs for all ChibiOS programs
 #include "hal.h"        // hardware abstraction layer header
-#include "vex.h"        // vex library header
+#include "vex.h"        // vex library headerf
 #include "smartmotor.h"
 #include "vexgyro.h"
+#include "main.h"
+#include "chprintf.h"
 
 
 // Digi IO configuration
@@ -475,24 +478,38 @@ void turnTo(int angle)
     degreeTarget = ((degreeTarget * 10) + currentAngle);
     // This makes sure that the robot always turns the most effcient way
     // (multiplied by ten see note above)
+    
+    // It was found that the current propotional control stops the robot just before it reaches it's target 
+    // Keeping the motors on and locking up control of the robot. 
+    // This is obvously undesirbiable so I added a intergral component to the control
+    // Making it a PI control system
+    int targetTurnIntergral = 0;
+
     if (angle > 0)
     {
+
         while (vexGyroGet() < degreeTarget)
         {
             // While turning this way the target will have a higher value 
-            gyroMotorDifference = ( degreeTarget - vexGyroGet()); 
+            gyroMotorDifference = ( ((degreeTarget / 10) - (vexGyroGet()/ 10)) * .3);
+
+
                                                                  
             // Than the current value of vexGyroGet()
-            vexMotorSet(RFW, gyroMotorDifference);
-            vexMotorSet(RBW, gyroMotorDifference);
-            vexMotorSet(LFW, -gyroMotorDifference);
-            vexMotorSet(LBW, -gyroMotorDifference);   
+            vexMotorSet(RFW, -targetTurnIntergral);
+            vexMotorSet(RBW, -targetTurnIntergral);
+            vexMotorSet(LFW, -targetTurnIntergral);
+            vexMotorSet(LBW, -targetTurnIntergral);   
             
             // Don't hog the CPU
             vexSleep ( 25 ); 
+
+            targetTurnIntergral = (targetTurnIntergral + (gyroMotorDifference * .1));
+
+            
         }
 
-        // Make sure that motors turn off when it hits it's target
+        // Make sure that motors turn off when it hits it's target 
         vexMotorSet(RFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LFW, 0);
@@ -502,18 +519,32 @@ void turnTo(int angle)
     // Multiplied by ten because vexGryoGet() multplies teh angle by ten
     if (angle < 0)
     {
+        targetTurnIntergral = 0;
 
         // 
         while (vexGyroGet() > degreeTarget)
         {
             gyroMotorDifference = (vexGyroGet() - degreeTarget);
-            vexMotorSet(RFW, -gyroMotorDifference);
-            vexMotorSet(RBW, -gyroMotorDifference);
-            vexMotorSet(LFW, gyroMotorDifference);
-            vexMotorSet(LBW, gyroMotorDifference);
+            vexMotorSet(RFW, targetTurnIntergral);
+            vexMotorSet(RBW, targetTurnIntergral);
+            vexMotorSet(LFW, targetTurnIntergral);
+            vexMotorSet(LBW, targetTurnIntergral);
             vexSleep ( 25 );
+
+            targetTurnIntergral = (targetTurnIntergral + (gyroMotorDifference * .1));
+
+
         }
-    }  
+
+        // Make sure that the motors turn of when the target is hit. 
+        // Introducing it this way will not allow for continous error blocking
+        // But I am fairly certain that it is not needed. 
+        vexMotorSet(RFW, 0);
+        vexMotorSet(RBW, 0);
+        vexMotorSet(LFW, 0);
+        vexMotorSet(LBW, 0);
+    }
+
 
 }
 
@@ -632,12 +663,12 @@ vexOperator( void *arg )
 
             // Debug gryo code function
             // Need to get rid of this before competition
-            /*
+            
             if(vexControllerGet(Btn8R) == 1)
             {
                 turnTo(360);
             }
-            */
+            
             //liftControl();
             clawControl();
 
