@@ -484,36 +484,67 @@ void turnTo(int angle)
     // This is obvously undesirbiable so I added a intergral component to the control
     // Making it a PI control system
     int targetTurnIntergral = 0;
+    int oldGyroMotorDifferent = 0;
+    int newGyroMotorDifference = 0;
+    int outPut = 0;
+    int turnToDerivative = 0;
+
+    // Tuning Varibles
+    int Kp = 1;
+    int Kd = 1;
+    int Ki = 1;
 
     if (angle > 0)
     {
 
-        while (vexGyroGet() < degreeTarget)
+        while (vexGyroGet() != degreeTarget)
         {
-            // While turning this way the target will have a higher value 
-            gyroMotorDifference = ( ((degreeTarget / 10) - (vexGyroGet()/ 10)) * .3);
+            // This is the start of the PID controller. I probably will only go with
+            // a PD control for this function, but I may go with the whole blown thing
+            // If you're not sure what this means please google this because it is
+            // A Rather Important topic to cover
+
+            // Swapping Values around to save the old one
+            oldGyroMotorDifferent = newGyroMotorDifference;
+
+            // Grabbing the new error
+            newGyroMotorDifference = ( (degreeTarget / 10) - (vexGyroGet()/ 10) );
+
+            // Accumulating the Error
+            targetTurnIntergral = (targetTurnIntergral + (gyroMotorDifference * .025));
+
+            // Finding the dervative
+            turnToDerivative = ((newGyroMotorDifference - oldGyroMotorDifferent) / .025);
+
+            // Combining them all together
+            outPut = ( (Kp * newGyroMotorDifference) + (Ki * targetTurnIntergral) + (Kd * turnToDerivative) );
+
+
+            
 
 
                                                                  
             // Than the current value of vexGyroGet()
-            vexMotorSet(RFW, -targetTurnIntergral);
-            vexMotorSet(RBW, -targetTurnIntergral);
-            vexMotorSet(LFW, -targetTurnIntergral);
-            vexMotorSet(LBW, -targetTurnIntergral);   
+            vexMotorSet(RFW, outPut);
+            vexMotorSet(RBW, outPut);
+            vexMotorSet(LFW, outPut);
+            vexMotorSet(LBW, outPut);   
             
             // Don't hog the CPU
             vexSleep ( 25 ); 
 
-            targetTurnIntergral = (targetTurnIntergral + (gyroMotorDifference * .1));
+            
 
             
         }
 
-        // Make sure that motors turn off when it hits it's target 
+        // Make sure that motors turn off when it hits it's target
+        /*
         vexMotorSet(RFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LFW, 0);
         vexMotorSet(LBW, 0);  
+        */
     }
     
     // Multiplied by ten because vexGryoGet() multplies teh angle by ten
@@ -691,8 +722,6 @@ vexOperator( void *arg )
                 autonForward(155);
                 vexMotorSet(claw, -100);
                 vexSleep(500);
-
-
             }
             */
             
