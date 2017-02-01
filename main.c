@@ -83,7 +83,7 @@ cmd_gyro(vexStream *chp, int argc, char *argv[])
 
   while(loopHere < 1000)
   {
-    graphing();
+    graphing(vexGyroGet());
     vexSleep(25);
 
     loopHere = loopHere + 1;
@@ -139,8 +139,7 @@ void graphing(int data)
     
   pktSize = 2 + 2 + (1*sizeof(int)); //Header bytes + size field bytes + data
   
-  //IMPORTANT: Change to serial port that is connected to PC
-  Serial.write((uint8_t * )buffer, pktSize);
+  
   //IMPORTANT: Change to serial port that is connected to PC
   vex_print(chp, (uint8_t * )buffer, pktSize);
 }
