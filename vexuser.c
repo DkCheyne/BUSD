@@ -18,7 +18,6 @@
 #include "main.h"
 #include "chprintf.h"
 
-
 // Digi IO configuration
 static  vexDigiCfg  dConfig[kVexDigital_Num] = {
         { kVexDigital_1,    kVexSensorDigitalOutput, kVexConfigOutput,      0 },
@@ -41,7 +40,7 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
 /*-----------------------------------------------------------------------------*/
 /** @details
  *  This is where all of the motors are defined as in their type and sensor along
- s* direction and channel
+ * direction and channel
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
@@ -56,7 +55,8 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
-
+/* @cond 
+*/
 #define LL1    kVexMotor_9
 #define LL3    kVexMotor_4
 #define RL1    kVexMotor_5
@@ -74,6 +74,8 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
 #define RFW    kVexMotor_7
 #define LFW    kVexMotor_6
 /*------------------------------------------------------*/
+/* @endcond 
+*/
 
 
 
@@ -86,21 +88,29 @@ static  vexMotorCfg mConfig[kVexMotorNum] = {
  *  moving the arm. Whenever you move the arm all of the motors have to move
  *  in the same direction at the same time. So it was simple to basically 
  *  re-define them as one motor using this function. 
+ *
+ *  @param armMotorSpeed This is the speed at which the motors are to run
  */
 void 
 armLiftSpeed(int armMotorSpeed)
 {
+    // All of the arm motors have to turn at the same speed sso
+    // There are actually four motors on the arm, but the right
+    // Side shares a split wire (same logic and power)
     vexMotorSet(LL1, -armMotorSpeed);
     vexMotorSet(LL3, -armMotorSpeed);
     vexMotorSet(RL1, -armMotorSpeed);
 }
 
-
+/* @cond
+*/
 int armTarget = 0;
 int offSetCurrent = 0;
 int offSetPrev = 0;
 int offSetDerivative = 0;
-
+int offSetintigral = 0;
+/* @endcond
+ */
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      armSet                                                         */
@@ -109,11 +119,18 @@ int offSetDerivative = 0;
  *  Even with the addition of the rubber bands to the robot arm it sometimes 
  *  gets jostled around. So the driver then has to fix this problem. This 
  *  tries to keep the arm in the same postion using a somewhat hacked together
- *  PID control system.  
+ *  PID control system. This system could techincally be used for auton where
+ *  you would pass it a target. However this target would be in encoder counts
+ *  so the units would be a hassel to deal with as they have not been nor will
+ *  will they be converted to something usible i.e angle, % up, etc.
+ *
+ *
+ *  @param targetPositionArm This is the target for the arm to move to in some
+ *  arbitary positions. 
  */
 void armSet(int targetPositionArm) 
 {
-
+    
     int offSetPrev = offSetCurrent;
 
     // Calculate how far off the arm is from where it should be
@@ -126,13 +143,14 @@ void armSet(int targetPositionArm)
     // This could be a problem because it has the ablitly to block out the other
     // Code that is going on. If that happens and I can't find a way to fix it
     // I'll have to create a new task for it :/
+    /** @code */
     if(abs(offTargetcurrent) > 10)
     {
         // This is for when the arm falls beneith its target
         // See the note from above
         if(vexMotorPositionGet(RL1) < targetPositionArm)
         {
-            armLiftSpeed((-(offTargetcurrent) * 3) - (offSetDerivative * 3));
+            armLiftSpeed((-(offTargetcurrent) * 3) - (offSetDerivative * 3) - (offSetintigral * .001) );
         }
 
 
@@ -140,7 +158,7 @@ void armSet(int targetPositionArm)
         // See the note from above
         if(vexMotorPositionGet(RL1) > targetPositionArm)
         {
-            armLiftSpeed((offTargetcurrent) * 3 - (offSetDerivative * 3));
+            armLiftSpeed((offTargetcurrent) * 3 - (offSetDerivative * 3) - (offSetintigral * .001));
         }
 
         // Need to let the brain think
@@ -148,9 +166,9 @@ void armSet(int targetPositionArm)
 
         // Intergrate the error over time 
         // This should update roughly 40 times a second(ish)
-
-
+        offSetintigral = offSetintigral + offSetCurrent;
     }
+    /** @endcode */
     
 }
 
@@ -192,18 +210,21 @@ void UserDriveForward(float sideways, float forward)
  *  This function controls the lift that makes the robot move up or  
  *  down on the pole
  */
+
 void 
 liftControl(void)
 {
     // First need to make sure whether or not the lift motors should be on
     if((vexControllerGet(Btn8L) == 1) || (vexControllerGet(Btn8U) == 1))
     {
+        // Lift the Robot up
         if(vexControllerGet(Btn8L) == 1)
         {
             vexMotorSet(LiftMotor1, 120);
             vexMotorSet(LiftMotor2, 120);
         }
 
+        // Move the robot down
         if(vexControllerGet(Btn8U) == 1)
         {
             vexMotorSet(LiftMotor1, -120);
@@ -211,6 +232,7 @@ liftControl(void)
         }
     }
 
+    // Don't forget to turn off the motors
     else 
     {
         vexMotorSet(LiftMotor1, 0);
@@ -218,7 +240,6 @@ liftControl(void)
     }
     
 }
-
 
 
 /*-----------------------------------------------------------------------------*/
@@ -229,16 +250,19 @@ liftControl(void)
  */
  void clawControl(void)
  {
+    // Claw opens 
     if(vexControllerGet(Btn5D) == 1)
     {
         vexMotorSet(claw, 100);
     }
 
+    // Claw closes
     if(vexControllerGet(Btn5U) == 1)
     {
         vexMotorSet(claw, -100);
     }
 
+    // The claw is off
     if( (vexControllerGet(Btn5U) == 0) && (vexControllerGet(Btn5D) == 0))
     {
         vexMotorSet(claw, 0);
@@ -252,8 +276,10 @@ liftControl(void)
 
 // This is an incriment counter to be able to determine what target armSet() should get
 // Right now all this needs to do is intialize it once. 
+// @cond 
 int armLoops = 0;
 int lastState = 0;
+// @endcond
 /*-----------------------------------------------------------------------------*/
 /** @brief      userArmControl                                                 */
 /*-----------------------------------------------------------------------------*/
@@ -261,6 +287,7 @@ int lastState = 0;
  *  This function controls the arm of the robot. By looking for ch 1 for speed 
  *  It only works when button 8d is held down.
  */
+
  void 
  userArmControl(void)
  {
@@ -304,17 +331,7 @@ int lastState = 0;
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
+// @cond
 int frontMotorDifference = 0;
 bool loopAround = TRUE;
 int loopsAround = 0;
@@ -323,6 +340,7 @@ int RBWPos = 0;
 int LBWPos = 0;
 int RFWPos = 0;
 int LFWPos = 0;
+// @endcond
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      AutonBase                                                      */
@@ -330,8 +348,11 @@ int LFWPos = 0;
 /** @details                                                                   */
 /*  AutonBase takes a paramter of distance, in cm, and makes the robot drive   */
 /* that far.                                                                   */
-
-
+/*                                                                             */
+/** @param distance This is the distance in cm that you want the robot to move
+*   in a straight line
+*  
+*/
 void
 autonForward(int distance)
 {
@@ -340,38 +361,51 @@ autonForward(int distance)
     vexMotorPositionSet(RFW, 0);
     vexMotorPositionSet(LFW, 0);
     
-
+    // In order to gain three decimals of percision while still staying an int everything was multiplied by 1000 
     int RFWPos = (vexMotorPositionGet(RFW) * 1000);
                 
-
+    // This converts the distance in cm to encoder counts on the robot
+    // Remember that conversionConst will change depending on the 
+    // Motor, gear, and wheel.
     int ticksToGo = ((distance) * conversionConst);
 
-
+    // This sets the inital motor speed to zero so that they can slowly ramp up when this function is called
     int motorSpeed = 0;
 
-    //while(loopAround == TRUE)
-    //{
-      //  loopsAround = loopsAround + 1;
-
-        while( (abs(RFWPos)) < ticksToGo  ) 
-        {
+        // The motors are to turn while they still have not hit their target. Abs returns the absolute value of
+        // RFWPos this is here because sometimes you will want to pass this function a negative distance and
+        // in order for the logic to work 
+        while( (abs(RFWPos)) < ticksToGo  ) {
+            
+            // This ramps up the motor from its' stall speed to whatever it needs to move to based on the math below
+            // slowly so that it won't create an unnecessarly large current spike heating up the thermal fuse.
+            // The assumption is that at motor speed 70 it is safe to move to whatever speed it wants to drive at
             if (motorSpeed <= 70)
             {
                 motorSpeed = motorSpeed + 5;
             }
             
-
+            // In order to gain three decimals of percision while still staying an int everything was multiplied by 1000 
+            // I know that we already did this in this function, but because RFWPos does not reference itself when it is
+            // Changed you need to remultiple it each time
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
-     
-            frontMotorDifference = ( vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW) );
             
+            // This calculates how far off the motors are from each other while they are moving forward
+            // It's a + and not a - because the LFW is moving in the oposite direction of RFW based on the motor mounting
+            frontMotorDifference = ( vexMotorPositionGet(RFW) + vexMotorPositionGet(LFW) );
             
+            // Caps the error at 40 so that in case something goes wrong. The robot doesn't move
+            // Too fast in an unpredictable manor.
             if (frontMotorDifference > 40)
             {
                 frontMotorDifference = 40;
             }
             
-
+            // Depending on how the motors are mounted the sign of the correction needs to be changed
+            // The -10 is there because for some reason the right side skips foward a little bit
+            // When the function first boots up. It really should have a dervative contol in here
+            // To first that, but I don't really have time. Maybe later I'll move to PD here. Right 
+            // now it will stay as just P 
             vexMotorSet(RFW, -motorSpeed - frontMotorDifference);  
             vexMotorSet(LFW,  motorSpeed - 10 + frontMotorDifference);
             vexMotorSet(RBW, -motorSpeed - frontMotorDifference);  
@@ -386,21 +420,15 @@ autonForward(int distance)
             //}
 
         }
-
+        
+        // Don't forget to turn of the motors when you are done moving
         vexMotorSet(RFW, 0);
         vexMotorSet(LFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LBW, 0);
-        RFWPos = (vexMotorPositionGet(RFW) * 1000);
-        loopAround = FALSE;
 
-        vexSleep(25);
-        
-
-        
-    //}
-    
 }
+
 
 
 /*-----------------------------------------------------------------------------*/
@@ -409,6 +437,15 @@ autonForward(int distance)
 /** @details                                                                   */
 /*  First the arm has to move out to pop open the robot                        */
 /* that far.                                                                   */
+/*                                                                             */
+/** @param option There are multiple functionalities of this function \\-_-// 
+*   The first being a simple routine to get the claw of the bot to unstick
+*   Second option is to move the arm up to where ever the second parameter wants
+*   it to go to.
+*  
+*  @param target This is the target position that option two uses to make the 
+*  arm of the robot to move to. 
+*/
 void 
 autoArm(int option, int target)
 {
@@ -434,24 +471,44 @@ autoArm(int option, int target)
     // Turns robot arm to up position to knock off the stars
     if(option == 2)
     {
-        while(vexMotorPositionGet(RL1) < target)
-        {
+        // If the arm isn't at it's target then it's positon needs to be changed.
+        // The way it is written right now the arm will always overshoot the
+        // target by a little bit. It also will not take a negative position.
+        while(vexMotorPositionGet(RL1) < target) {
+
+            // Again more proportional control being used. The farther
+            // Off the arm is from its target the faster it moves
             armLiftSpeed(target - RL1);
 
-            //Sleep for a teenie tiny bit
+            // Sleep to allow the other threads to think
             vexSleep(25);
         }
     }
     
+    // Don't forget to turn off the motors when your done
     armLiftSpeed(0);
 }
 
 
 
-
+// @cond
 int gyroMotorDifference = 0;
 int motorSpeedGryo = 0;
 float currentAngle = 0.0;
+// @endcond
+
+
+/*-----------------------------------------------------------------------------*/
+/** @brief      turnTo                                                         */
+/*-----------------------------------------------------------------------------*/
+/** @details
+ *  To create a function to make the robot turn to a user defined angle. 
+ *
+ *  @param angle This is the angle in degrees that robot is to move to. Relative
+ *  to it's current angle. So that you don't have to keep track of it all while
+ *  creating auton.
+ */
+
 
 
 /*-----------------------------------------------------------------------------*/
@@ -582,18 +639,15 @@ void turnTo(int angle)
 
 
 
-
-
-int autonLoop = 0;
 /*-----------------------------------------------------------------------------*/
 /** @brief      Autonomous                                                     */
 /*-----------------------------------------------------------------------------*/
 /** @details
-*  This thread is started when the autonomous period is started
-*/
- msg_t vexAutonomous( void *arg )
- {
-     // (void)arg;
+ *  This thread is started when the autonomous period is started
+ */
+msg_t vexAutonomous( void *arg )
+{
+        // (void)arg;
  
      // Must call this
      vexTaskRegister("auton");
@@ -635,8 +689,7 @@ int autonLoop = 0;
     
  
      return (msg_t)0;
- }
-
+}
 
 
 
@@ -645,19 +698,20 @@ int autonLoop = 0;
 /*-----------------------------------------------------------------------------*/
 /** @details
  *  This thread is started when the driver control period is started
+ * 
+ *  @param *arg I believe its a pointer to something that convex uses behind this
+ *  more exploration is needed to determine it's purpose
  */
-msg_t
-vexOperator( void *arg )
+msg_t vexOperator( void *arg )
 {
+    // Again this is from convex the compiler hates it though
     int16_t     blink = 0;
 
+    // 
     (void)arg;
 
-    // Must call this
+    // Must call this so that this task can be killed by convex during a period of vexSleep() 
     vexTaskRegister("operator");
-
-    vexGyroInit(kVexAnalog_1);
-
 
     // Run until asked to terminate
     while(!chThdShouldTerminate())
@@ -679,7 +733,7 @@ vexOperator( void *arg )
                 autonForward(100);
             }
             
-            // This is jus the normal base code
+            // This is just the normal base code
             if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn7U) == 0))
             {
                  UserDriveForward(vexControllerGet(Ch3), vexControllerGet(Ch1));
@@ -694,7 +748,6 @@ vexOperator( void *arg )
 
             // Debug gryo code function
             // Need to get rid of this before competition
-            
             if(vexControllerGet(Btn8R) == 1)
             {
                 turnTo(360);
@@ -732,10 +785,10 @@ vexOperator( void *arg )
             // Then it will lock the arm into the last spot it was in "hopefully"
              userArmControl();
 
-        // Don't hog cpu
+        // Don't hog cpu allow time for other threads
         vexSleep( 25 );
         }
 
-
+    // This messes with vexTaskRegister. I don't know what though. 
     return (msg_t)0;
 }
