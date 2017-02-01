@@ -22,11 +22,17 @@
 /*    forum.  Please acknowledge the work of the authors when appropriate.     */
 /*    Thanks.                                                                  */
 /*                                                                             */
-/*    THIS SOFTWARE IS PROVIDED "AS IS". NO WARRANTIES, WHETHER EXPRESS,       */
-/*    IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES  */
-/*    OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS    */
-/*    SOFTWARE.  THE AUTHORS SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR    */
-/*    SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.*/
+/*    Licensed under the Apache License, Version 2.0 (the "License");          */
+/*    you may not use this file except in compliance with the License.         */
+/*    You may obtain a copy of the License at                                  */
+/*                                                                             */
+/*      http://www.apache.org/licenses/LICENSE-2.0                             */
+/*                                                                             */
+/*    Unless required by applicable law or agreed to in writing, software      */
+/*    distributed under the License is distributed on an "AS IS" BASIS,        */
+/*    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*    See the License for the specific language governing permissions and      */
+/*    limitations under the License.                                           */
 /*                                                                             */
 /*    The author can be contacted on the vex forums as jpearman                */
 /*    or electronic mail using jbpearman_at_mac_dot_com                        */
@@ -41,13 +47,10 @@
 #include "hal.h"
 #include "chprintf.h"
 #include "vex.h"
-
 #include "smartmotor.h"
 #include "apollo.h"
+#include "vexgyro.h"
 
-/*-----------------------------------------------------------------------------*/
-/* Command line related.                                                       */
-/*-----------------------------------------------------------------------------*/
 
 static void
 cmd_apollo( vexStream *chp, int argc, char *argv[])
@@ -58,12 +61,9 @@ cmd_apollo( vexStream *chp, int argc, char *argv[])
     apolloInit();
 
     // run until any key press
-    //while( chIOGetWouldBlock(chp) )
     while( sdGetWouldBlock((SerialDriver *)chp) )
         {
         apolloUpdate();
-
-        //chThdSleepMilliseconds(50);
         }
 
     apolloDeinit();
@@ -80,7 +80,35 @@ cmd_sm(vexStream *chp, int argc, char *argv[])
     SmartMotorDebugStatus();
 }
 
-#define SHELL_WA_SIZE   THD_WA_SIZE(2048)
+static void 
+cmd_gyro(vexStream *chp, int argc, char *argv[])
+{
+  int loopHere = 0;
+
+  (void)argv;
+  (void)chp;
+  (void)argc;
+
+  int iHateMyLife = vexGyroGet();
+
+  while(loopHere < 1000)
+  {
+    vex_chprintf(chp," %2d", vexGyroGet());
+    vexSleep(25);
+
+    loopHere = loopHere + 1;
+  }
+  
+
+}
+
+
+
+/*-----------------------------------------------------------------------------*/
+/* Command line related.                                                       */
+/*-----------------------------------------------------------------------------*/
+
+#define SHELL_WA_SIZE   THD_WA_SIZE(512)
 
 // Shell command
 static const ShellCommand commands[] = {
@@ -92,9 +120,10 @@ static const ShellCommand commands[] = {
   {"son",     vexSonarDebug},
   {"ime",     vexIMEDebug},
   {"test",    vexTestDebug},
-  {"sm",      cmd_sm },
   {"apollo",  cmd_apollo},
-   {NULL, NULL}
+  {"sm",      cmd_sm},
+  {"gyro",    cmd_gyro},
+  {NULL, NULL}
 };
 
 // configuration for the shell
@@ -123,8 +152,6 @@ int main(void)
 	// Init the serial port associated with the console
 	vexConsoleInit();
 
-    // use digital 10 as safety
-    //if( palReadPad( VEX_DIGIO_10_PORT, VEX_DIGIO_10_PIN) == 1)
     // init VEX
     vexCortexInit();
 
