@@ -1,4 +1,4 @@
-/*-----------------------------------------------------------------------------*/
+  /*-----------------------------------------------------------------------------*/
 /*                                                                             */
 /*                        Copyright (c) James Pearman                          */
 /*                                   2013                                      */
@@ -22,17 +22,11 @@
 /*    forum.  Please acknowledge the work of the authors when appropriate.     */
 /*    Thanks.                                                                  */
 /*                                                                             */
-/*    Licensed under the Apache License, Version 2.0 (the "License");          */
-/*    you may not use this file except in compliance with the License.         */
-/*    You may obtain a copy of the License at                                  */
-/*                                                                             */
-/*      http://www.apache.org/licenses/LICENSE-2.0                             */
-/*                                                                             */
-/*    Unless required by applicable law or agreed to in writing, software      */
-/*    distributed under the License is distributed on an "AS IS" BASIS,        */
-/*    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
-/*    See the License for the specific language governing permissions and      */
-/*    limitations under the License.                                           */
+/*    THIS SOFTWARE IS PROVIDED "AS IS". NO WARRANTIES, WHETHER EXPRESS,       */
+/*    IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES  */
+/*    OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE APPLY TO THIS    */
+/*    SOFTWARE.  THE AUTHORS SHALL NOT, IN ANY CIRCUMSTANCES, BE LIABLE FOR    */
+/*    SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.*/
 /*                                                                             */
 /*    The author can be contacted on the vex forums as jpearman                */
 /*    or electronic mail using jbpearman_at_mac_dot_com                        */
@@ -47,10 +41,13 @@
 #include "hal.h"
 #include "chprintf.h"
 #include "vex.h"
+
 #include "smartmotor.h"
 #include "apollo.h"
-#include "vexgyro.h"
 
+/*-----------------------------------------------------------------------------*/
+/* Command line related.                                                       */
+/*-----------------------------------------------------------------------------*/
 
 static void
 cmd_apollo( vexStream *chp, int argc, char *argv[])
@@ -61,24 +58,17 @@ cmd_apollo( vexStream *chp, int argc, char *argv[])
     apolloInit();
 
     // run until any key press
+    //while( chIOGetWouldBlock(chp) )
     while( sdGetWouldBlock((SerialDriver *)chp) )
         {
         apolloUpdate();
+
+        //chThdSleepMilliseconds(50);
         }
 
     apolloDeinit();
 }
 
-
-static void
-cmd_sm(vexStream *chp, int argc, char *argv[])
-{
-    (void)argv;
-    (void)chp;
-    (void)argc;
-
-    SmartMotorDebugStatus();
-}
 
 static void 
 cmd_gyro(vexStream *chp, int argc, char *argv[])
@@ -93,7 +83,7 @@ cmd_gyro(vexStream *chp, int argc, char *argv[])
 
   while(loopHere < 1000)
   {
-    vex_chprintf(chp," %2d", vexGyroGet());
+    graphing();
     vexSleep(25);
 
     loopHere = loopHere + 1;
@@ -102,13 +92,17 @@ cmd_gyro(vexStream *chp, int argc, char *argv[])
 
 }
 
+static void
+cmd_sm(vexStream *chp, int argc, char *argv[])
+{
+    (void)argv;
+    (void)chp;
+    (void)argc;
 
+    SmartMotorDebugStatus();
+}
 
-/*-----------------------------------------------------------------------------*/
-/* Command line related.                                                       */
-/*-----------------------------------------------------------------------------*/
-
-#define SHELL_WA_SIZE   THD_WA_SIZE(512)
+#define SHELL_WA_SIZE   THD_WA_SIZE(2048)
 
 // Shell command
 static const ShellCommand commands[] = {
@@ -120,10 +114,9 @@ static const ShellCommand commands[] = {
   {"son",     vexSonarDebug},
   {"ime",     vexIMEDebug},
   {"test",    vexTestDebug},
+  {"sm",      cmd_sm },
   {"apollo",  cmd_apollo},
-  {"sm",      cmd_sm},
-  {"gyro",    cmd_gyro},
-  {NULL, NULL}
+   {NULL, NULL}
 };
 
 // configuration for the shell
@@ -131,6 +124,27 @@ static const ShellConfig shell_cfg1 = {
   (vexStream *)SD_CONSOLE,
    commands
 };
+
+// This function interfaces with simPlot for real time serial data plotting
+// The application is in the google docs folder. You will not find it anywhere
+// Else online \\-_-//. If you try hard the internet archive will have some
+// Documentation on how to use this program.
+void graphing(int data)
+{
+  int pktSize;
+  
+  buffer[0] = 0xCDAB;             //SimPlot packet header. Indicates start of data packet
+  buffer[1] = 1*sizeof(int);      //Size of data in bytes. Does not include the header and size fields
+  buffer[2] = data;
+    
+  pktSize = 2 + 2 + (1*sizeof(int)); //Header bytes + size field bytes + data
+  
+  //IMPORTANT: Change to serial port that is connected to PC
+  Serial.write((uint8_t * )buffer, pktSize);
+  //IMPORTANT: Change to serial port that is connected to PC
+  vex_print(chp, (uint8_t * )buffer, pktSize);
+}
+
 
 /*-----------------------------------------------------------------------------*/
 //  Application entry point.											       */
@@ -152,6 +166,8 @@ int main(void)
 	// Init the serial port associated with the console
 	vexConsoleInit();
 
+    // use digital 10 as safety
+    //if( palReadPad( VEX_DIGIO_10_PORT, VEX_DIGIO_10_PIN) == 1)
     // init VEX
     vexCortexInit();
 
