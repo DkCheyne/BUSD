@@ -45,14 +45,14 @@ static  vexDigiCfg  dConfig[kVexDigital_Num] = {
  */
 static  vexMotorCfg mConfig[kVexMotorNum] = {
         { kVexMotor_1,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_4 },
+        { kVexMotor_2,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_3,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_4,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_5,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1},
-        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2},
+        { kVexMotor_6,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_2},
+        { kVexMotor_7,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_1},
         { kVexMotor_8,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
-        { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorIME,         kImeChannel_3},
+        { kVexMotor_9,      kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 },
         { kVexMotor_10,     kVexMotorUndefined,      kVexMotorNormal,       kVexSensorNone,        0 }
 };
 
@@ -498,8 +498,9 @@ void turnTo(int angle)
 
     if (angle > 0)
     {
+        int loopTimer = 0;
 
-        while (vexGyroGet() != degreeTarget)
+        while (vexGyroGet() != degreeTarget || (loopTimer < 500))
         {
             // This is the start of the PID controller. I probably will only go with
             // a PD control for this function, but I may go with the whole blown thing
@@ -520,70 +521,30 @@ void turnTo(int angle)
 
             // Combining them all together
             outPut = ( (Kp * newGyroMotorDifference) + (Ki * targetTurnIntergral) + (Kd * turnToDerivative) );
-
-
-            
-
-
                                                                  
             // Than the current value of vexGyroGet()
             vexMotorSet(RFW, -outPut);
             vexMotorSet(RBW, -outPut);
             vexMotorSet(LFW, -outPut);
             vexMotorSet(LBW, -outPut);   
+
+            //Incrimenting the timer
+            loopTimer = loopTimer + 1;
             
             // Don't hog the CPU
-            vexSleep ( 25 ); 
-
-            
-
-            
+            vexSleep ( 25 );       
         }
 
         // Make sure that motors turn off when it hits it's target
-        /*
+        
         vexMotorSet(RFW, 0);
         vexMotorSet(RBW, 0);
         vexMotorSet(LFW, 0);
         vexMotorSet(LBW, 0);  
-        */
+        
     }
     
-    // Multiplied by ten because vexGryoGet() multplies teh angle by ten
-    if (angle < 0)
-    {
-        targetTurnIntergral = 0;
-
-        // 
-        while (vexGyroGet() > degreeTarget)
-        {
-            gyroMotorDifference = (vexGyroGet() - degreeTarget);
-            vexMotorSet(RFW, targetTurnIntergral);
-            vexMotorSet(RBW, targetTurnIntergral);
-            vexMotorSet(LFW, targetTurnIntergral);
-            vexMotorSet(LBW, targetTurnIntergral);
-            vexSleep ( 25 );
-
-            targetTurnIntergral = (targetTurnIntergral + (gyroMotorDifference * .1));
-
-
-        }
-
-        // Make sure that the motors turn of when the target is hit. 
-        // Introducing it this way will not allow for continous error blocking
-        // But I am fairly certain that it is not needed. 
-        vexMotorSet(RFW, 0);
-        vexMotorSet(RBW, 0);
-        vexMotorSet(LFW, 0);
-        vexMotorSet(LBW, 0);
-    }
-
-
 }
-
-
-
-
 
 
 int autonLoop = 0;
@@ -599,14 +560,17 @@ int autonLoop = 0;
  
      // Must call this
      vexTaskRegister("auton");
-            
+
+     
     vexMotorSet(claw, 100);
-    vexSleep(400);
+    vexSleep(200);
     vexMotorSet(claw, 0);
     armLiftSpeed(100);
-    vexSleep(1300);
-    armLiftSpeed(0);
-    vexSleep(600);
+    vexSleep(250);
+    armLiftSpeed(-100);
+    vexSleep(250);
+    armLiftSpeed(100);
+    vexSleep(1200);
     //vexMotorSet(claw, 100);
     //vexSleep(100);
     vexMotorSet(claw, 0);
@@ -671,10 +635,8 @@ vexOperator( void *arg )
                 autonBase(10);
             }
             */
+            
 
-            
-            // There needs to be some intialization in autonForward so that I can call it more than once 
-            
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
@@ -707,28 +669,25 @@ vexOperator( void *arg )
 
         
             // My auton debug button
-            /*
-            if(vexControllerGet(Btn8U) == 1)
+            /* if(vexControllerGet(Btn8U) == 1)
             {
                
                 vexMotorSet(claw, 100);
-                vexSleep(500);
+                vexSleep(200);
                 vexMotorSet(claw, 0);
                 armLiftSpeed(100);
-                vexSleep(1300);
-                armLiftSpeed(0);
-                vexSleep(1000);
-                vexMotorSet(claw, 100);
-                vexSleep(100);
+                vexSleep(250);
+                armLiftSpeed(-100);
+                vexSleep(250);
+                armLiftSpeed(100);
+                vexSleep(1200);
+                //vexMotorSet(claw, 100);
+                //vexSleep(100);
                 vexMotorSet(claw, 0);
                 autonForward(155);
-                vexMotorSet(claw, -100);
-                vexSleep(500);
             }
             */
-            
-            
-
+           
 
             // User Arm Control will always work unless you press Btn6U
             // Then it will lock the arm into the last spot it was in "hopefully"
