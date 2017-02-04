@@ -166,8 +166,14 @@ vexUserSetup()
 {
     vexDigitalConfigure( dConfig, DIG_CONFIG_SIZE( dConfig ) );
     vexMotorConfigure( mConfig, MOT_CONFIG_SIZE( mConfig ) );
+
+    
 }
 
+void vexUserInit()
+{
+vexGyroInit(kVexAnalog_1);
+}
 
 /*-----------------------------------------------------------------------------*/
 /** @brief      userDriveFoward                                                */
@@ -365,7 +371,7 @@ autonForward(int distance)
 
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
      
-            frontMotorDifference = ( vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW) );
+             frontMotorDifference = 0; //( vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW) );
             
             
             if (frontMotorDifference > 40)
@@ -374,7 +380,7 @@ autonForward(int distance)
             }
             
 
-            vexMotorSet(RFW, -motorSpeed - frontMotorDifference);  
+            vexMotorSet(RFW,  -motorSpeed - frontMotorDifference);  
             vexMotorSet(LFW,  motorSpeed - 10 + frontMotorDifference);
             vexMotorSet(RBW, -motorSpeed - frontMotorDifference);  
             vexMotorSet(LBW,  motorSpeed - 10 + frontMotorDifference);
@@ -561,7 +567,9 @@ int autonLoop = 0;
      // Must call this
      vexTaskRegister("auton");
 
-     
+    armLiftSpeed(-60);
+    vexSleep(250);
+    armLiftSpeed(0);
     vexMotorSet(claw, 100);
     vexSleep(200);
     vexMotorSet(claw, 0);
@@ -570,12 +578,15 @@ int autonLoop = 0;
     armLiftSpeed(-100);
     vexSleep(250);
     armLiftSpeed(100);
-    vexSleep(1200);
+    vexSleep(50);
+    vexMotorSet(claw, 120);
+    vexSleep(350);
+    vexMotorSet(claw, 0);
+    vexSleep(1110);
     //vexMotorSet(claw, 100);
     //vexSleep(100);
     vexMotorSet(claw, 0);
-    autonForward(155);
-    // THis is for programming skils
+    autonForward(175);
     /*
     autonForward(-155);
     vexMotorSet(claw, -100);
@@ -622,7 +633,7 @@ vexOperator( void *arg )
     // Must call this
     vexTaskRegister("operator");
 
-    vexGyroInit(kVexAnalog_1);
+    
 
 
     // Run until asked to terminate
@@ -669,9 +680,12 @@ vexOperator( void *arg )
 
         
             // My auton debug button
-            /* if(vexControllerGet(Btn8U) == 1)
+            
+             if(vexControllerGet(Btn8U) == 1)
             {
-               
+                armLiftSpeed(-60);
+                vexSleep(250);
+                armLiftSpeed(0);
                 vexMotorSet(claw, 100);
                 vexSleep(200);
                 vexMotorSet(claw, 0);
@@ -680,14 +694,21 @@ vexOperator( void *arg )
                 armLiftSpeed(-100);
                 vexSleep(250);
                 armLiftSpeed(100);
-                vexSleep(1200);
+                vexSleep(50);
+                vexMotorSet(claw, 120);
+                vexSleep(350);
+                vexMotorSet(claw, 0);
+                vexSleep(1110);
                 //vexMotorSet(claw, 100);
                 //vexSleep(100);
                 vexMotorSet(claw, 0);
-                autonForward(155);
+                autonForward(175);
             }
-            */
-           
+            
+            
+            
+            
+
 
             // User Arm Control will always work unless you press Btn6U
             // Then it will lock the arm into the last spot it was in "hopefully"
