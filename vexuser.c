@@ -360,13 +360,85 @@ autonForward(int distance)
     //while(loopAround == TRUE)
     //{
       //  loopsAround = loopsAround + 1;
+    bool forward;
 
-        while( (abs(RFWPos)) < ticksToGo  ) 
+    if( distance > 0);
+    {
+        forward = true;
+    }
+
+    if(distance < 0);
+    {
+        forward = false;
+    }
+
+        while( (abs(RFWPos)) < ticksToGo && distance == true) 
         {
-            if (motorSpeed <= 70)
+            // The robot wants to move backwards
+            if (motorSpeed <= 70 && distance > 0)
             {
                 motorSpeed = motorSpeed + 5;
             }
+
+            // The robot wants to move backwards
+            if(motorSpeed > -70 && distance < 0)
+            {
+                motorSpeed = motorSpeed - 5;
+            }
+
+
+            
+
+            RFWPos = (vexMotorPositionGet(RFW) * 1000);
+     
+             frontMotorDifference = 0; //( vexMotorPositionGet(RFW) - vexMotorPositionGet(LFW) );
+            
+            
+            if (frontMotorDifference > 40)
+            {
+                frontMotorDifference = 40;
+            }
+            
+
+            vexMotorSet(RFW,  -motorSpeed - frontMotorDifference);  
+            vexMotorSet(LFW,  motorSpeed - 10 + frontMotorDifference);
+            vexMotorSet(RBW, -motorSpeed - frontMotorDifference);  
+            vexMotorSet(LBW,  motorSpeed - 10 + frontMotorDifference);
+ 
+            // This should keep going from zero speed to full speed from being instant.
+            vexSleep ( 25 );
+            
+            //if((vexControllerGet(Btn5U) == 1) && (vexControllerGet(Btn6U) == 1))
+            //{
+            //    break;
+            //}
+
+        }
+
+        vexMotorSet(RFW, 0);
+        vexMotorSet(LFW, 0);
+        vexMotorSet(RBW, 0);
+        vexMotorSet(LBW, 0);
+        RFWPos = (vexMotorPositionGet(RFW) * 1000);
+        loopAround = FALSE;
+
+        vexSleep(25);
+        
+        while( ((RFWPos)) > ticksToGo && distance == false) 
+        {
+            // The robot wants to move backwards
+            if (motorSpeed <= 70 && distance > 0)
+            {
+                motorSpeed = motorSpeed + 5;
+            }
+
+            // The robot wants to move backwards
+            if(motorSpeed > -70 && distance < 0)
+            {
+                motorSpeed = motorSpeed - 5;
+            }
+
+
             
 
             RFWPos = (vexMotorPositionGet(RFW) * 1000);
@@ -498,6 +570,7 @@ void turnTo(int angle)
     int turnToDerivative = 0;
 
     // Tuning Varibles
+    // See Eng Note Book for results its a result of Zieger-Nichols Methods 
     int Kp = 2.4;
     int Kd = .35;
     int Ki = .0875;
@@ -506,7 +579,7 @@ void turnTo(int angle)
     {
         int loopTimer = 0;
 
-        while (vexGyroGet() != degreeTarget || (loopTimer < 500))
+        while ((vexGyroGet() != degreeTarget || (loopTimer < 200)))
         {
             // This is the start of the PID controller. I probably will only go with
             // a PD control for this function, but I may go with the whole blown thing
@@ -536,6 +609,12 @@ void turnTo(int angle)
 
             //Incrimenting the timer
             loopTimer = loopTimer + 1;
+
+            if(loopTimer > 200)
+            {
+                break;
+            }
+
             
             // Don't hog the CPU
             vexSleep ( 25 );       
@@ -567,8 +646,10 @@ int autonLoop = 0;
      // Must call this
      vexTaskRegister("auton");
 
-    armLiftSpeed(-60);
-    vexSleep(250);
+    armLiftSpeed(100);
+    vexSleep(200);
+    armLiftSpeed(-120);
+    vexSleep(600);
     armLiftSpeed(0);
     vexMotorSet(claw, 100);
     vexSleep(200);
@@ -583,10 +664,31 @@ int autonLoop = 0;
     vexSleep(350);
     vexMotorSet(claw, 0);
     vexSleep(1110);
+
     //vexMotorSet(claw, 100);
     //vexSleep(100);
+    /*
     vexMotorSet(claw, 0);
-    autonForward(175);
+    autonForward(165);
+    
+    autonForward(-85);
+    armLiftSpeed(-60);
+    vexSleep(500);
+    vexMotorSet(claw, -100);
+    vexSleep(450);
+    vexMotorSet(claw, 0);
+    armLiftSpeed(0);
+    turnTo(90);
+    autonForward(100);
+    vexMotorSet(claw, 100);
+    armLiftSpeed(100);
+    vexSleep(1000);
+    turnTo(-90);
+    autonForward(100);
+    vexMotorSet(claw, -100);
+
+
+
     /*
     autonForward(-155);
     vexMotorSet(claw, -100);
@@ -648,12 +750,13 @@ vexOperator( void *arg )
             */
             
 
+            /*
             if(vexControllerGet(Btn8D) == 1)
             {
                 loopAround = TRUE;
                 autonForward(100);
             }
-            
+            */
             // This is jus the normal base code
             if ((loopAround == FALSE || loopsAround == 0) && (vexControllerGet(Btn7U) == 0))
             {
@@ -669,22 +772,23 @@ vexOperator( void *arg )
 
             // Debug gryo code function
             // Need to get rid of this before competition
-            
+            /*
             if(vexControllerGet(Btn8R) == 1)
             {
                 turnTo(360);
             }
+            */
             
             liftControl();
             clawControl();
 
         
             // My auton debug button
-            
+            /*
              if(vexControllerGet(Btn8U) == 1)
             {
                 armLiftSpeed(-60);
-                vexSleep(250);
+                vexSleep(400);
                 armLiftSpeed(0);
                 vexMotorSet(claw, 100);
                 vexSleep(200);
@@ -702,8 +806,29 @@ vexOperator( void *arg )
                 //vexMotorSet(claw, 100);
                 //vexSleep(100);
                 vexMotorSet(claw, 0);
-                autonForward(175);
+                autonForward(155);
+    
+                autonForward(-85);
+                vexSleep(800);
+                armLiftSpeed(-60);
+                vexSleep(500);
+                vexMotorSet(claw, -100);
+                vexSleep(450);
+                vexMotorSet(claw, 0);
+                armLiftSpeed(0);
+                turnTo(90);
+                autonForward(100);
+                vexMotorSet(claw, 100);
+                armLiftSpeed(100);
+                vexSleep(1000);
+                turnTo(-90);
+                autonForward(100);
+                vexMotorSet(claw, -100);
+
             }
+            */
+            
+            
             
             
             
